@@ -33,6 +33,16 @@ function Header() {
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        {/* EKG mark */}
+        <svg width="36" height="20" viewBox="0 0 36 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline
+            points="1,10 7,10 10,2 13,18 15,4 17,10 23,10 35,10"
+            stroke="var(--accent)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
         <span style={{
           fontFamily: 'JetBrains Mono',
           fontSize: '10px',
