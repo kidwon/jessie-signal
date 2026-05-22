@@ -41,7 +41,7 @@ function Header() {
           color: 'var(--text-dim)',
           textTransform: 'uppercase',
         }}>
-          Market Pulse
+          Jessie Signal
         </span>
         <span className="cursor-blink" style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--accent)', lineHeight: 1 }}>_</span>
         <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green)', marginLeft: '4px' }} />

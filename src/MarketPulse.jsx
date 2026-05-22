@@ -552,7 +552,7 @@ export default function MarketPulse() {
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ margin: 0, fontFamily: 'Syne', fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-            {lang === 'zh' ? '市场信号仪表盘' : 'Market Signal Dashboard'}
+            {lang === 'zh' ? 'Jessie Signal' : 'Jessie Signal'}
           </h1>
           {lastUpdate && (
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.12em', marginTop: '0.3rem' }}>
