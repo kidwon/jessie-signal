@@ -617,19 +617,41 @@ export default function MarketPulse() {
             <CrossAssetCard ca={data.cross_asset} lang={lang} />
           </div>
 
-          <p style={{
+          <div style={{
             fontFamily: 'JetBrains Mono',
             fontSize: '7px',
             color: 'var(--text-muted)',
             letterSpacing: '0.1em',
             textAlign: 'center',
             marginTop: '1.5rem',
-            lineHeight: 1.7,
+            lineHeight: 2,
           }}>
-            {lang === 'zh'
-              ? '// 情景分类基于阈值自动推断 · 仅供参考 · 不构成投资建议'
-              : '// SCENARIO CLASSIFICATION IS AUTO-DERIVED · FOR REFERENCE ONLY · NOT INVESTMENT ADVICE'}
-          </p>
+            <p style={{ margin: 0 }}>
+              {lang === 'zh'
+                ? '// 情景分类基于阈值自动推断 · 仅供参考 · 不构成投资建议'
+                : '// SCENARIO CLASSIFICATION IS AUTO-DERIVED · FOR REFERENCE ONLY · NOT INVESTMENT ADVICE'}
+            </p>
+            <p style={{ margin: 0 }}>
+              {lang === 'zh' ? '// 基于 ' : '// built on a method by '}
+              <a
+                href="https://youtu.be/MfB9zaul_pk?si=xAmPQfPTopR689eU"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: 'var(--text-dim)',
+                  textDecoration: 'none',
+                  borderBottom: '1px solid var(--border-bright)',
+                  paddingBottom: '1px',
+                  transition: 'color 0.2s, border-color 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border-bright)'; }}
+              >
+                Jessie
+              </a>
+              {lang === 'zh' ? ' 的视频方法构建' : ''}
+            </p>
+          </div>
         </>
       )}
     </div>
