@@ -1,15 +1,28 @@
 import { createContext, useContext, useState } from 'react'
 
-const I18nContext = createContext({ lang: 'zh', setLang: () => {} })
+const LANGS = ['zh', 'en', 'ja']
+
+const I18nContext = createContext({ lang: 'zh', toggle: () => {} })
 
 export function I18nProvider({ children }) {
   const [lang, setLang] = useState(() => localStorage.getItem('mp_lang') || 'zh')
+
   function toggle() {
-    const next = lang === 'zh' ? 'en' : 'zh'
+    const next = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]
     setLang(next)
     localStorage.setItem('mp_lang', next)
   }
-  return <I18nContext.Provider value={{ lang, toggle }}>{children}</I18nContext.Provider>
+
+  function setLangDirect(l) {
+    setLang(l)
+    localStorage.setItem('mp_lang', l)
+  }
+
+  return (
+    <I18nContext.Provider value={{ lang, toggle, setLang: setLangDirect }}>
+      {children}
+    </I18nContext.Provider>
+  )
 }
 
 export function useI18n() {

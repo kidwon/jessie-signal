@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from './theme.jsx'
 import MarketPulse from './MarketPulse'
 
 function Header() {
-  const { lang, toggle: toggleLang } = useI18n()
+  const { lang, toggle: toggleLang, setLang } = useI18n()
   const { theme, toggle: toggleTheme } = useTheme()
 
   const btnStyle = {
@@ -59,13 +59,27 @@ function Header() {
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
         <button style={btnStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff} onClick={toggleTheme}>
           {theme === 'dark' ? '[☀]' : '[☾]'}
         </button>
-        <button style={btnStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff} onClick={toggleLang}>
-          [{lang === 'zh' ? 'EN' : 'ZH'}]
-        </button>
+        {[{ code: 'zh', label: '中' }, { code: 'en', label: 'EN' }, { code: 'ja', label: '日' }].map(({ code, label }) => (
+          <button
+            key={code}
+            onClick={() => setLang(code)}
+            style={{
+              ...btnStyle,
+              color: lang === code ? 'var(--accent)' : 'var(--text-dim)',
+              borderColor: lang === code ? 'var(--accent)' : 'var(--border-bright)',
+            }}
+            onMouseEnter={hoverOn}
+            onMouseLeave={e => {
+              if (lang !== code) hoverOff(e)
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </header>
   )
