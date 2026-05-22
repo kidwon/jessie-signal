@@ -68,3 +68,17 @@ npm run build
 - 前端 5 分钟本地缓存（`useRef`），避免频繁调用 Convex Action
 - Tailwind 动态 class 必须写完整字符串（不能运行时拼接）
 - `convex/_generated/` 目录由 `npx convex dev` 自动维护，不要手动编辑
+
+<!-- convex-ai-start -->
+
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
+how to correctly use Convex APIs and patterns. The file contains rules that
+override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
+<!-- convex-ai-end -->

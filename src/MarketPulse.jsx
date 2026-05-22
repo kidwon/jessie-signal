@@ -168,19 +168,22 @@ function ScenarioTrack({ activeNum, lang }) {
           key={shown}
           className="fade-up"
           style={{
-            borderTop: `1px solid ${isPreview ? 'var(--border-mid)' : shownS.color + '44'}`,
-            paddingTop: '1rem',
-            marginTop: '0.2rem',
+            marginTop: '0.75rem',
+            borderLeft: `3px solid ${shownS.color}`,
+            background: shownS.color + '0e',
+            padding: '1rem 1.1rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.7rem' }}>
+          {/* Scenario name row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.9rem' }}>
             <span style={{
               fontFamily: 'Syne',
-              fontSize: '13px',
-              fontWeight: 700,
-              letterSpacing: '0.12em',
+              fontSize: '16px',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
               color: shownS.color,
               textTransform: 'uppercase',
+              lineHeight: 1,
             }}>
               {lang === 'zh' ? shownS.name_zh : shownS.name_en}
             </span>
@@ -190,15 +193,17 @@ function ScenarioTrack({ activeNum, lang }) {
                 fontSize: '8px',
                 color: 'var(--text-dim)',
                 letterSpacing: '0.1em',
+                border: '1px solid var(--border-bright)',
+                padding: '1px 5px',
               }}>
-                {lang === 'zh' ? '· 预览' : '· PREVIEW'}
+                {lang === 'zh' ? 'PREVIEW' : 'PREVIEW'}
               </span>
             )}
           </div>
 
           <div
             className="scenario-detail-grid"
-            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem 1.5rem' }}
           >
             {[
               { key: '// CONDITION', zh: shownS.cond_zh,   en: shownS.cond_en,   dimText: true },
@@ -209,7 +214,7 @@ function ScenarioTrack({ activeNum, lang }) {
                   fontFamily: 'JetBrains Mono',
                   fontSize: '8px',
                   letterSpacing: '0.14em',
-                  color: 'var(--text-muted)',
+                  color: shownS.color + 'aa',
                   marginBottom: '0.35rem',
                 }}>
                   {key}
@@ -217,7 +222,7 @@ function ScenarioTrack({ activeNum, lang }) {
                 <p style={{
                   margin: 0,
                   fontFamily: 'Syne',
-                  fontSize: '12px',
+                  fontSize: '13px',
                   lineHeight: 1.65,
                   color: dimText ? 'var(--text-dim)' : 'var(--text)',
                 }}>
