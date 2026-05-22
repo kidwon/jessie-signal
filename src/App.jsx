@@ -1,99 +1,77 @@
 import { I18nProvider, useI18n } from './i18n.jsx'
+import { ThemeProvider, useTheme } from './theme.jsx'
 import MarketPulse from './MarketPulse'
 
-const S = {
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0.6rem 1.25rem',
-    borderBottom: '1px solid var(--border)',
-    background: 'var(--bg)',
-  },
-  logoWrap: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.6rem',
-  },
-  logoText: {
-    fontFamily: 'JetBrains Mono',
-    fontSize: '10px',
-    fontWeight: 500,
-    letterSpacing: '0.22em',
-    color: 'var(--text-dim)',
-    textTransform: 'uppercase',
-  },
-  cursor: {
-    fontFamily: 'JetBrains Mono',
-    fontSize: '12px',
-    color: 'var(--accent)',
-    lineHeight: 1,
-  },
-  liveDot: {
-    width: '5px',
-    height: '5px',
-    borderRadius: '50%',
-    background: 'var(--green)',
-    boxShadow: '0 0 6px var(--green)',
-    marginLeft: '4px',
-  },
-  liveLabel: {
-    fontFamily: 'JetBrains Mono',
-    fontSize: '8px',
-    color: 'var(--green)',
-    letterSpacing: '0.12em',
-  },
-}
-
 function Header() {
-  const { lang, toggle } = useI18n()
+  const { lang, toggle: toggleLang } = useI18n()
+  const { theme, toggle: toggleTheme } = useTheme()
+
+  const btnStyle = {
+    fontFamily: 'JetBrains Mono',
+    fontSize: '9px',
+    letterSpacing: '0.14em',
+    color: 'var(--text-dim)',
+    background: 'none',
+    border: '1px solid var(--border-bright)',
+    padding: '0.3rem 0.65rem',
+    cursor: 'pointer',
+    transition: 'color 0.2s, border-color 0.2s',
+  }
+
+  const hoverOn  = e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }
+  const hoverOff = e => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border-bright)'; }
 
   return (
-    <header style={S.header}>
-      <div style={S.logoWrap}>
-        <span style={S.logoText}>Market Pulse</span>
-        <span className="cursor-blink" style={S.cursor}>_</span>
-        <div style={S.liveDot} />
-        <span style={S.liveLabel}>LIVE</span>
+    <header style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0.6rem 1.25rem',
+      borderBottom: '1px solid var(--border)',
+      background: 'var(--bg)',
+      transition: 'background 0.25s ease, border-color 0.25s ease',
+    }}>
+      {/* Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <span style={{
+          fontFamily: 'JetBrains Mono',
+          fontSize: '10px',
+          fontWeight: 500,
+          letterSpacing: '0.22em',
+          color: 'var(--text-dim)',
+          textTransform: 'uppercase',
+        }}>
+          Market Pulse
+        </span>
+        <span className="cursor-blink" style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--accent)', lineHeight: 1 }}>_</span>
+        <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green)', marginLeft: '4px' }} />
+        <span style={{ fontFamily: 'JetBrains Mono', fontSize: '8px', color: 'var(--green)', letterSpacing: '0.12em' }}>LIVE</span>
       </div>
 
-      <button
-        onClick={toggle}
-        style={{
-          fontFamily: 'JetBrains Mono',
-          fontSize: '9px',
-          letterSpacing: '0.14em',
-          color: 'var(--text-dim)',
-          background: 'none',
-          border: '1px solid var(--border-bright)',
-          padding: '0.3rem 0.65rem',
-          cursor: 'pointer',
-          transition: 'color 0.2s, border-color 0.2s',
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.color = 'var(--accent)'
-          e.currentTarget.style.borderColor = 'var(--accent)'
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.color = 'var(--text-dim)'
-          e.currentTarget.style.borderColor = 'var(--border-bright)'
-        }}
-      >
-        [{lang === 'zh' ? 'EN' : 'ZH'}]
-      </button>
+      {/* Controls */}
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button style={btnStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff} onClick={toggleTheme}>
+          {theme === 'dark' ? '[☀]' : '[☾]'}
+        </button>
+        <button style={btnStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff} onClick={toggleLang}>
+          [{lang === 'zh' ? 'EN' : 'ZH'}]
+        </button>
+      </div>
     </header>
   )
 }
 
 export default function App() {
   return (
-    <I18nProvider>
-      <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-        <Header />
-        <main>
-          <MarketPulse />
-        </main>
-      </div>
-    </I18nProvider>
+    <ThemeProvider>
+      <I18nProvider>
+        <div style={{ minHeight: '100vh', background: 'var(--bg)', transition: 'background 0.25s ease' }}>
+          <Header />
+          <main>
+            <MarketPulse />
+          </main>
+        </div>
+      </I18nProvider>
+    </ThemeProvider>
   )
 }
