@@ -9,6 +9,7 @@
  */
 
 import type * as signals from "../signals.js";
+import type * as visits from "../visits.js";
 
 import type {
   ApiFromModules,
@@ -18,6 +19,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   signals: typeof signals;
+  visits: typeof visits;
 }>;
 
 /**
