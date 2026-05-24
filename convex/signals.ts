@@ -1,5 +1,6 @@
 import { action } from "./_generated/server"
 import { v } from "convex/values"
+import { api } from "./_generated/api"
 
 const ETF = ["SPY", "RSP", "IWM", "HYG", "JNK", "TLT", "GLD", "UUP"]
 
@@ -88,9 +89,21 @@ export const get = action({
     if (gldChg > 0.5 && tltChg < -0.3) crossNotes.push({ zh: "黄金涨但美债跌：通胀恐慌或货币信用危机信号", en: "Gold rising, bonds falling: inflation panic or currency crisis signal" })
     if (crossNotes.length === 0) crossNotes.push({ zh: "跨资产暂无明显异动信号", en: "No significant cross-asset signals at this time" })
 
+    const scenarioData = classifyScenario(vix, fgScore, hygChg, jnkChg)
+    await ctx.runMutation(api.visits.saveMarketState, {
+      scenario: scenarioData.scenario,
+      name_zh: scenarioData.name_zh as string,
+      name_en: scenarioData.name_en as string,
+      action_zh: scenarioData.action_zh as string,
+      action_en: scenarioData.action_en as string,
+      color: scenarioData.color as string,
+      vix,
+      fg_score: fgScore,
+    })
+
     return {
       updated_at: Date.now() / 1000,
-      scenario: classifyScenario(vix, fgScore, hygChg, jnkChg),
+      scenario: scenarioData,
       vix: { value: vix, ...vixLabel(vix) },
       fear_greed: { score: Math.round(fgScore * 10) / 10, rating: fgRating, ...fgLabel(fgScore) },
       breadth: { spy_chg: spyChg, rsp_chg: rspChg, iwm_chg: iwmChg, divergence: Math.round((rspChg - spyChg) * 100) / 100 },

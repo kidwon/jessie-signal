@@ -1,6 +1,34 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+export const saveMarketState = mutation({
+  args: {
+    scenario: v.number(),
+    name_zh: v.string(),
+    name_en: v.string(),
+    action_zh: v.string(),
+    action_en: v.string(),
+    color: v.string(),
+    vix: v.number(),
+    fg_score: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.query("marketState").first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { ...args, updated_at: Date.now() });
+    } else {
+      await ctx.db.insert("marketState", { ...args, updated_at: Date.now() });
+    }
+  },
+});
+
+export const getMarketState = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("marketState").first();
+  },
+});
+
 export const record = mutation({
   args: { lang: v.optional(v.string()) },
   handler: async (ctx, args) => {
