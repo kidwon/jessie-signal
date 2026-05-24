@@ -90,16 +90,18 @@ export const get = action({
     if (crossNotes.length === 0) crossNotes.push({ zh: "跨资产暂无明显异动信号", en: "No significant cross-asset signals at this time" })
 
     const scenarioData = classifyScenario(vix, fgScore, hygChg, jnkChg)
-    await ctx.runMutation(api.visits.saveMarketState, {
-      scenario: scenarioData.scenario,
-      name_zh: scenarioData.name_zh as string,
-      name_en: scenarioData.name_en as string,
-      action_zh: scenarioData.action_zh as string,
-      action_en: scenarioData.action_en as string,
-      color: scenarioData.color as string,
-      vix,
-      fg_score: fgScore,
-    })
+    try {
+      await ctx.runMutation(api.visits.saveMarketState, {
+        scenario: scenarioData.scenario,
+        name_zh: scenarioData.name_zh as string,
+        name_en: scenarioData.name_en as string,
+        action_zh: scenarioData.action_zh as string,
+        action_en: scenarioData.action_en as string,
+        color: scenarioData.color as string,
+        vix,
+        fg_score: fgScore,
+      })
+    } catch (_) {}
 
     return {
       updated_at: Date.now() / 1000,
