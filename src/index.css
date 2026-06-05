@@ -1,28 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Syne:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-/* ── Dark theme (default) ─────────────────────────────────────────────────── */
+/* ── Light theme (default) ────────────────────────────────────────────────── */
 :root,
-[data-theme="dark"] {
-  --bg:            #06060b;
-  --surface:       #0c0c15;
-  --border:        #131320;
-  --border-mid:    #1d1d2e;
-  --border-bright: #2c2c42;
-  --text:          #dcdcf0;
-  --text-dim:      #55557a;
-  --text-muted:    #2a2a40;
-  --accent:        #f0b429;
-  --accent-glow:   rgba(240, 180, 41, 0.18);
-  --green:         #0fd4a0;
-  --green-dim:     rgba(15, 212, 160, 0.08);
-  --red:           #f0485a;
-  --red-dim:       rgba(240, 72, 90, 0.08);
-  --blue:          #5b9cf6;
-  --scanline:      rgba(0, 0, 0, 0.07);
-}
-
-/* ── Light theme ──────────────────────────────────────────────────────────── */
 [data-theme="light"] {
   --bg:            #ededf5;
   --surface:       #f6f6fc;
@@ -42,11 +22,32 @@
   --scanline:      rgba(0, 0, 0, 0.018);
 }
 
+/* ── Dark theme ───────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg:            #06060b;
+  --surface:       #0c0c15;
+  --border:        #131320;
+  --border-mid:    #1d1d2e;
+  --border-bright: #2c2c42;
+  --text:          #dcdcf0;
+  --text-dim:      #55557a;
+  --text-muted:    #2a2a40;
+  --accent:        #f0b429;
+  --accent-glow:   rgba(240, 180, 41, 0.18);
+  --green:         #0fd4a0;
+  --green-dim:     rgba(15, 212, 160, 0.08);
+  --red:           #f0485a;
+  --red-dim:       rgba(240, 72, 90, 0.08);
+  --blue:          #5b9cf6;
+  --scanline:      rgba(0, 0, 0, 0.07);
+}
+
 /* ── Base ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
+  position: relative;
   background: var(--bg);
   color: var(--text);
   font-family: 'Syne', sans-serif;
@@ -55,10 +56,11 @@ body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
-/* CRT scanline texture */
+/* CRT scanline texture — absolute (not fixed) so iOS "Full Page"
+   screenshots render it correctly instead of stretching it to a black overlay */
 body::before {
   content: '';
-  position: fixed;
+  position: absolute;
   inset: 0;
   background-image: repeating-linear-gradient(
     0deg,
