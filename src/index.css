@@ -19,7 +19,6 @@
   --red:           #c22035;
   --red-dim:       rgba(194, 32, 53, 0.08);
   --blue:          #2255cc;
-  --scanline:      rgba(0, 0, 0, 0.018);
 }
 
 /* ── Dark theme ───────────────────────────────────────────────────────────── */
@@ -39,7 +38,6 @@
   --red:           #f0485a;
   --red-dim:       rgba(240, 72, 90, 0.08);
   --blue:          #5b9cf6;
-  --scanline:      rgba(0, 0, 0, 0.07);
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
@@ -47,30 +45,12 @@
 
 body {
   margin: 0;
-  position: relative;
   background: var(--bg);
   color: var(--text);
   font-family: 'Syne', sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   transition: background 0.25s ease, color 0.25s ease;
-}
-
-/* CRT scanline texture — absolute (not fixed) so iOS "Full Page"
-   screenshots render it correctly instead of stretching it to a black overlay */
-body::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 1px,
-    var(--scanline) 1px,
-    var(--scanline) 2px
-  );
-  pointer-events: none;
-  z-index: 9999;
 }
 
 /* ── Animations ───────────────────────────────────────────────────────────── */
