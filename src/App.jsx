@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useMutation, useQuery } from 'convex/react'
+import { useQuery } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { I18nProvider, useI18n } from './i18n.jsx'
 import { ThemeProvider, useTheme } from './theme.jsx'
@@ -101,11 +101,14 @@ function Header() {
 
 function AppInner() {
   const { lang } = useI18n()
-  const recordVisit = useMutation(api.visits.record)
   const visitStats = useQuery(api.visits.stats)
 
   useEffect(() => {
-    recordVisit({ lang })
+    // Hit the HTTP action so Convex can read the real client IP and dedupe
+    // per IP per day. (.convex.cloud serves functions, .convex.site serves
+    // HTTP actions.)
+    const httpUrl = import.meta.env.VITE_CONVEX_URL.replace('.convex.cloud', '.convex.site')
+    fetch(`${httpUrl}/api/visit?lang=${lang}`, { method: 'POST' }).catch(() => {})
   }, [])
 
   return (

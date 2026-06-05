@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const saveMarketState = mutation({
@@ -29,12 +29,27 @@ export const getMarketState = query({
   },
 });
 
-export const record = mutation({
-  args: { lang: v.optional(v.string()) },
+// Records a visit, deduped per IP per (UTC) day. Internal: only callable from
+// the /api/visit HTTP action, which supplies the real client IP — keeping the
+// IP unspoofable by direct client calls.
+export const recordVisit = internalMutation({
+  args: { ip: v.string(), lang: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const existing = await ctx.db
+      .query("visits")
+      .withIndex("by_ip", (q) =>
+        q.eq("ip", args.ip).gte("timestamp", todayStart.getTime()),
+      )
+      .first();
+    if (existing) return; // same IP already counted today
+
     await ctx.db.insert("visits", {
       timestamp: Date.now(),
       lang: args.lang,
+      ip: args.ip,
     });
   },
 });

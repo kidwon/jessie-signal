@@ -1,6 +1,12 @@
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+}
 
 const COLORS: Record<string, { bg: string; accent: string; badge: string }> = {
   gray:   { bg: "#1a1a1a", accent: "#888888", badge: "#333333" },
@@ -84,6 +90,25 @@ http.route({
       },
     })
   }),
+})
+
+// Records a visit with the real client IP (deduped per IP per day server-side).
+http.route({
+  path: "/api/visit",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const fwd = request.headers.get("x-forwarded-for") ?? ""
+    const ip = fwd.split(",")[0].trim() || "unknown"
+    const lang = new URL(request.url).searchParams.get("lang") ?? undefined
+    await ctx.runMutation(internal.visits.recordVisit, { ip, lang })
+    return new Response(null, { status: 204, headers: CORS })
+  }),
+})
+
+http.route({
+  path: "/api/visit",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
 })
 
 export default http

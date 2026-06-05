@@ -5,7 +5,10 @@ export default defineSchema({
   visits: defineTable({
     timestamp: v.number(),
     lang: v.optional(v.string()),
-  }).index("by_timestamp", ["timestamp"]),
+    ip: v.optional(v.string()),
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_ip", ["ip", "timestamp"]),
 
   marketState: defineTable({
     scenario: v.number(),
