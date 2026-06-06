@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAction } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { useI18n } from './i18n.jsx'
+import { tr } from './lang.js'
 
 const CACHE_TTL = 5 * 60 * 1000
 
@@ -28,81 +29,141 @@ function useAnimatedNumber(target, decimals = 1, duration = 900) {
   return display
 }
 
-// ─── i18n helper ─────────────────────────────────────────────────────────────
-const t = (lang, zh, en, ja) => lang === 'zh' ? zh : lang === 'ja' ? ja : en
+// ─── Locale for date formatting ──────────────────────────────────────────────
+const DATE_LOCALE = { zh: 'zh-CN', en: 'en-US', ja: 'ja-JP', fr: 'fr-FR', de: 'de-DE', ru: 'ru-RU' }
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const SCENARIOS = [
   {
     num: 0,
-    short_zh: '不明',   short_en: 'UNK',  short_ja: '不明',
-    name_zh:  '信号不明', name_en: 'UNCLEAR', name_ja: 'シグナル不明',
-    cond_zh:  'VIX 处于中间区间，恐贪指数未达极端',
-    cond_en:  'VIX in middle range, F&G not at extremes',
-    cond_ja:  'VIXは中間域、恐怖&貪欲指数は極端ではない',
-    action_zh: '等待更清晰的信号，保持观望。',
-    action_en: 'Wait for clearer signals. Stay on the sidelines.',
-    action_ja: '明確なシグナルを待ちましょう。様子見が賢明です。',
+    short: { zh: '不明', en: 'UNK', ja: '不明', fr: 'N/D', de: 'UNKL', ru: 'Н/Д' },
+    name: { zh: '信号不明', en: 'UNCLEAR', ja: 'シグナル不明', fr: 'SIGNAL FLOU', de: 'UNKLAR', ru: 'НЕЯСНО' },
+    cond: {
+      zh: 'VIX 处于中间区间，恐贪指数未达极端',
+      en: 'VIX in middle range, F&G not at extremes',
+      ja: 'VIXは中間域、恐怖&貪欲指数は極端ではない',
+      fr: 'VIX en zone médiane, F&G hors des extrêmes',
+      de: 'VIX im mittleren Bereich, F&G nicht extrem',
+      ru: 'VIX в среднем диапазоне, индекс страха и жадности не на экстремуме',
+    },
+    action: {
+      zh: '等待更清晰的信号，保持观望。',
+      en: 'Wait for clearer signals. Stay on the sidelines.',
+      ja: '明確なシグナルを待ちましょう。様子見が賢明です。',
+      fr: "Attendez des signaux plus clairs. Restez à l'écart.",
+      de: 'Auf klarere Signale warten. Abwarten.',
+      ru: 'Дождитесь более чётких сигналов. Оставайтесь в стороне.',
+    },
     color: '#8888aa', glow: 'rgba(136,136,170,0.25)',
   },
   {
     num: 1,
-    short_zh: '调整',   short_en: 'COR',  short_ja: '調整',
-    name_zh:  '正常调整', name_en: 'CORRECTION', name_ja: '通常調整',
-    cond_zh:  'VIX 18–25，市场有所波动但未进入恐慌',
-    cond_en:  'VIX 18–25, elevated but not panic territory',
-    cond_ja:  'VIX 18–25、変動はあるがパニックには至っていない',
-    action_zh: '维持标准定投节奏，不必恐慌，也不必激进抄底。',
-    action_en: 'Maintain standard DCA. No need to panic or aggressively buy the dip.',
-    action_ja: '通常の積立ペースを維持。パニックも強引な押し目買いも不要です。',
+    short: { zh: '调整', en: 'COR', ja: '調整', fr: 'CORR', de: 'KORR', ru: 'КОРР' },
+    name: { zh: '正常调整', en: 'CORRECTION', ja: '通常調整', fr: 'CORRECTION', de: 'KORREKTUR', ru: 'КОРРЕКЦИЯ' },
+    cond: {
+      zh: 'VIX 18–25，市场有所波动但未进入恐慌',
+      en: 'VIX 18–25, elevated but not panic territory',
+      ja: 'VIX 18–25、変動はあるがパニックには至っていない',
+      fr: 'VIX 18–25, tension élevée mais pas de panique',
+      de: 'VIX 18–25, erhöht aber keine Panik',
+      ru: 'VIX 18–25, повышенная волатильность, но не паника',
+    },
+    action: {
+      zh: '维持标准定投节奏，不必恐慌，也不必激进抄底。',
+      en: 'Maintain standard DCA. No need to panic or aggressively buy the dip.',
+      ja: '通常の積立ペースを維持。パニックも強引な押し目買いも不要です。',
+      fr: 'Maintenez vos versements réguliers. Ni panique, ni achat agressif du creux.',
+      de: 'Standard-Sparplan beibehalten. Keine Panik, kein aggressives Nachkaufen.',
+      ru: 'Сохраняйте обычный план усреднения. Без паники и агрессивных покупок просадки.',
+    },
     color: '#5b9cf6', glow: 'rgba(91,156,246,0.25)',
   },
   {
     num: 2,
-    short_zh: '恐慌',  short_en: 'PAN',  short_ja: 'パニック',
-    name_zh:  '恐慌',  name_en: 'PANIC', name_ja: 'パニック',
-    cond_zh:  'VIX 25–35，恐贪指数 < 25，信用市场尚稳',
-    cond_en:  'VIX 25–35, F&G < 25, credit markets stable',
-    cond_ja:  'VIX 25–35、恐怖指数 < 25、信用市場は安定',
-    action_zh: '分批建仓：先投 30%，VIX 触 30 再加 30%，VIX 破 40 或回落时投入剩余 40%。',
-    action_en: 'Tranche-based buying: deploy 30% now, +30% at VIX 30, final 40% when VIX breaks 40 or rolls over.',
-    action_ja: '分割投資：まず30%、VIX30で+30%、VIX40超または反転時に残り40%を投入。',
+    short: { zh: '恐慌', en: 'PAN', ja: 'パニック', fr: 'PANIQUE', de: 'PANIK', ru: 'ПАНИКА' },
+    name: { zh: '恐慌', en: 'PANIC', ja: 'パニック', fr: 'PANIQUE', de: 'PANIK', ru: 'ПАНИКА' },
+    cond: {
+      zh: 'VIX 25–35，恐贪指数 < 25，信用市场尚稳',
+      en: 'VIX 25–35, F&G < 25, credit markets stable',
+      ja: 'VIX 25–35、恐怖指数 < 25、信用市場は安定',
+      fr: 'VIX 25–35, F&G < 25, marchés du crédit stables',
+      de: 'VIX 25–35, F&G < 25, Kreditmärkte stabil',
+      ru: 'VIX 25–35, индекс < 25, кредитные рынки стабильны',
+    },
+    action: {
+      zh: '分批建仓：先投 30%，VIX 触 30 再加 30%，VIX 破 40 或回落时投入剩余 40%。',
+      en: 'Tranche-based buying: deploy 30% now, +30% at VIX 30, final 40% when VIX breaks 40 or rolls over.',
+      ja: '分割投資：まず30%、VIX30で+30%、VIX40超または反転時に残り40%を投入。',
+      fr: 'Achat par tranches : 30 % maintenant, +30 % à VIX 30, 40 % restants quand le VIX dépasse 40 ou reflue.',
+      de: 'Tranchenkauf: jetzt 30 %, +30 % bei VIX 30, restliche 40 % bei VIX über 40 oder Rückgang.',
+      ru: 'Покупка траншами: 30 % сейчас, +30 % при VIX 30, оставшиеся 40 % при пробое VIX 40 или развороте.',
+    },
     color: '#f0b429', glow: 'rgba(240,180,41,0.25)',
   },
   {
     num: 3,
-    short_zh: '极恐',   short_en: 'EXT',  short_ja: '極恐慌',
-    name_zh:  '极度恐慌', name_en: 'EXTREME PANIC', name_ja: '極度パニック',
-    cond_zh:  'VIX ≥ 35，恐贪指数 < 15，信用市场无明显压力',
-    cond_en:  'VIX ≥ 35, F&G < 15, no significant credit stress',
-    cond_ja:  'VIX ≥ 35、恐怖指数 < 15、信用市場に大きな圧力なし',
-    action_zh: '积极布局优质核心资产，始终保留部分现金，切勿一次性全仓。',
-    action_en: 'Aggressively target quality assets. Always preserve some cash — never go all-in at once.',
-    action_ja: '優良コア資産を積極的に仕込む。常に一部現金を確保し、一括投資は禁物。',
+    short: { zh: '极恐', en: 'EXT', ja: '極恐慌', fr: 'EXTRÊME', de: 'EXTREM', ru: 'ЭКСТР' },
+    name: { zh: '极度恐慌', en: 'EXTREME PANIC', ja: '極度パニック', fr: 'PANIQUE EXTRÊME', de: 'EXTREME PANIK', ru: 'КРАЙНЯЯ ПАНИКА' },
+    cond: {
+      zh: 'VIX ≥ 35，恐贪指数 < 15，信用市场无明显压力',
+      en: 'VIX ≥ 35, F&G < 15, no significant credit stress',
+      ja: 'VIX ≥ 35、恐怖指数 < 15、信用市場に大きな圧力なし',
+      fr: 'VIX ≥ 35, F&G < 15, pas de stress de crédit notable',
+      de: 'VIX ≥ 35, F&G < 15, kein nennenswerter Kreditstress',
+      ru: 'VIX ≥ 35, индекс < 15, без значимого кредитного стресса',
+    },
+    action: {
+      zh: '积极布局优质核心资产，始终保留部分现金，切勿一次性全仓。',
+      en: 'Aggressively target quality assets. Always preserve some cash — never go all-in at once.',
+      ja: '優良コア資産を積極的に仕込む。常に一部現金を確保し、一括投資は禁物。',
+      fr: "Visez activement les actifs de qualité. Gardez toujours du cash — jamais tout d'un coup.",
+      de: 'Aktiv Qualitätswerte aufbauen. Stets etwas Cash halten — nie alles auf einmal.',
+      ru: 'Активно набирайте качественные активы. Всегда держите часть в кэше — не входите на всё сразу.',
+    },
     color: '#0fd4a0', glow: 'rgba(15,212,160,0.25)',
   },
   {
     num: 4,
-    short_zh: '系统',    short_en: 'SYS',  short_ja: 'システム',
-    name_zh:  '系统性风险', name_en: 'SYSTEMIC RISK', name_ja: 'システミックリスク',
-    cond_zh:  'VIX ≥ 30 且信用市场承压（HYG 或 JNK 单日跌幅 > 1.5%）',
-    cond_en:  'VIX ≥ 30 AND credit stress (HYG or JNK down > 1.5%)',
-    cond_ja:  'VIX ≥ 30 かつ信用市場に圧力（HYGまたはJNKが1.5%超下落）',
-    action_zh: '绝对不要急于抄底。降低杠杆，减持高 Beta 股，储备现金，等待信用市场企稳。',
-    action_en: 'Do not rush to buy the dip. Reduce leverage, cut high-beta stocks, stockpile cash, wait for credit markets to stabilize.',
-    action_ja: '押し目買いを急がないこと。レバレッジ縮小、高ベータ株削減、現金確保、信用市場の安定を待つ。',
+    short: { zh: '系统', en: 'SYS', ja: 'システム', fr: 'SYST', de: 'SYS', ru: 'СИСТ' },
+    name: { zh: '系统性风险', en: 'SYSTEMIC RISK', ja: 'システミックリスク', fr: 'RISQUE SYSTÉMIQUE', de: 'SYSTEMRISIKO', ru: 'СИСТЕМНЫЙ РИСК' },
+    cond: {
+      zh: 'VIX ≥ 30 且信用市场承压（HYG 或 JNK 单日跌幅 > 1.5%）',
+      en: 'VIX ≥ 30 AND credit stress (HYG or JNK down > 1.5%)',
+      ja: 'VIX ≥ 30 かつ信用市場に圧力（HYGまたはJNKが1.5%超下落）',
+      fr: 'VIX ≥ 30 ET stress de crédit (HYG ou JNK en baisse > 1,5 %)',
+      de: 'VIX ≥ 30 UND Kreditstress (HYG oder JNK über 1,5 % gefallen)',
+      ru: 'VIX ≥ 30 И кредитный стресс (HYG или JNK падают > 1,5 %)',
+    },
+    action: {
+      zh: '绝对不要急于抄底。降低杠杆，减持高 Beta 股，储备现金，等待信用市场企稳。',
+      en: 'Do not rush to buy the dip. Reduce leverage, cut high-beta stocks, stockpile cash, wait for credit markets to stabilize.',
+      ja: '押し目買いを急がないこと。レバレッジ縮小、高ベータ株削減、現金確保、信用市場の安定を待つ。',
+      fr: 'Ne vous précipitez pas sur le creux. Réduisez le levier, allégez les valeurs à bêta élevé, constituez du cash, attendez la stabilisation du crédit.',
+      de: 'Nicht überstürzt nachkaufen. Hebel reduzieren, High-Beta-Aktien abbauen, Cash aufbauen, auf Stabilisierung der Kreditmärkte warten.',
+      ru: 'Не спешите откупать просадку. Снизьте плечо, сократите высокобета-акции, накапливайте кэш, ждите стабилизации кредитного рынка.',
+    },
     color: '#f0485a', glow: 'rgba(240,72,90,0.25)',
   },
   {
     num: 5,
-    short_zh: '极贪',   short_en: 'GRD',  short_ja: '過熱',
-    name_zh:  '极度贪婪', name_en: 'EXTREME GREED', name_ja: '極度の過熱',
-    cond_zh:  'VIX < 18 且恐贪指数 > 75，市场过热',
-    cond_en:  'VIX < 18 AND F&G > 75, market overheated',
-    cond_ja:  'VIX < 18 かつ恐怖指数 > 75、市場過熱',
-    action_zh: '市场估值已拉伸。逐步减仓，轮换至防御性资产，可考虑 Covered Call 锁定收益。',
-    action_en: 'Valuations are stretched. Scale back exposure, rotate defensive, write Covered Calls.',
-    action_ja: 'バリュエーションは割高。ポジション縮小、ディフェンシブへ転換、カバードコールを検討。',
+    short: { zh: '极贪', en: 'GRD', ja: '過熱', fr: 'CUPID', de: 'GIER', ru: 'ЖАДН' },
+    name: { zh: '极度贪婪', en: 'EXTREME GREED', ja: '極度の過熱', fr: 'CUPIDITÉ EXTRÊME', de: 'EXTREME GIER', ru: 'КРАЙНЯЯ ЖАДНОСТЬ' },
+    cond: {
+      zh: 'VIX < 18 且恐贪指数 > 75，市场过热',
+      en: 'VIX < 18 AND F&G > 75, market overheated',
+      ja: 'VIX < 18 かつ恐怖指数 > 75、市場過熱',
+      fr: 'VIX < 18 ET F&G > 75, marché en surchauffe',
+      de: 'VIX < 18 UND F&G > 75, Markt überhitzt',
+      ru: 'VIX < 18 И F&G > 75, рынок перегрет',
+    },
+    action: {
+      zh: '市场估值已拉伸。逐步减仓，轮换至防御性资产，可考虑 Covered Call 锁定收益。',
+      en: 'Valuations are stretched. Scale back exposure, rotate defensive, write Covered Calls.',
+      ja: 'バリュエーションは割高。ポジション縮小、ディフェンシブへ転換、カバードコールを検討。',
+      fr: "Valorisations tendues. Réduisez l'exposition, basculez vers le défensif, vendez des Covered Calls.",
+      de: 'Bewertungen überdehnt. Engagement reduzieren, defensiv umschichten, Covered Calls schreiben.',
+      ru: 'Оценки завышены. Сокращайте позиции, переходите в защитные активы, продавайте Covered Calls.',
+    },
     color: '#c084fc', glow: 'rgba(192,132,252,0.25)',
   },
 ]
@@ -170,7 +231,7 @@ function ScenarioTrack({ activeNum, lang }) {
                 transition: 'color 0.22s ease',
                 userSelect: 'none',
               }}>
-                {t(lang, s.short_zh, s.short_en, s.short_ja)}
+                {tr(lang, s.short)}
               </div>
             </div>
           )
@@ -200,7 +261,7 @@ function ScenarioTrack({ activeNum, lang }) {
               textTransform: 'uppercase',
               lineHeight: 1,
             }}>
-              {t(lang, shownS.name_zh, shownS.name_en, shownS.name_ja)}
+              {tr(lang, shownS.name)}
             </span>
             {isPreview && (
               <span style={{
@@ -211,7 +272,7 @@ function ScenarioTrack({ activeNum, lang }) {
                 border: '1px solid var(--border-bright)',
                 padding: '1px 5px',
               }}>
-                {lang === 'zh' ? 'PREVIEW' : 'PREVIEW'}
+                PREVIEW
               </span>
             )}
           </div>
@@ -221,9 +282,9 @@ function ScenarioTrack({ activeNum, lang }) {
             style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem 1.5rem' }}
           >
             {[
-              { key: '// CONDITION', zh: shownS.cond_zh,   en: shownS.cond_en,   ja: shownS.cond_ja,   dimText: true },
-              { key: '// ACTION',    zh: shownS.action_zh, en: shownS.action_en, ja: shownS.action_ja, dimText: false },
-            ].map(({ key, zh, en, ja, dimText }) => (
+              { key: '// CONDITION', text: shownS.cond,   dimText: true },
+              { key: '// ACTION',    text: shownS.action, dimText: false },
+            ].map(({ key, text, dimText }) => (
               <div key={key}>
                 <div style={{
                   fontFamily: 'JetBrains Mono',
@@ -241,7 +302,7 @@ function ScenarioTrack({ activeNum, lang }) {
                   lineHeight: 1.65,
                   color: dimText ? 'var(--text-dim)' : 'var(--text)',
                 }}>
-                  {t(lang, zh, en, ja)}
+                  {tr(lang, text)}
                 </p>
               </div>
             ))}
@@ -436,7 +497,7 @@ function FGCard({ fg, lang }) {
 
   return (
     <Cell borderBottom>
-      <Label>Fear &amp; Greed / {t(lang, '恐贪指数', 'Sentiment', '恐怖&貪欲指数')}</Label>
+      <Label>Fear &amp; Greed / {tr(lang, { zh: '恐贪指数', en: 'Sentiment', ja: '恐怖&貪欲指数', fr: 'Sentiment', de: 'Stimmung', ru: 'Настроение' })}</Label>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
         <BigNumber value={score} decimals={0} duration={1100} />
         <StatusLabel color={color}>{label}</StatusLabel>
@@ -454,14 +515,14 @@ function BreadthCard({ breadth, lang }) {
 
   return (
     <Cell borderRight>
-      <Label>Breadth / {t(lang, '市场广度', 'Market Breadth', '市場の幅')}</Label>
+      <Label>Breadth / {tr(lang, { zh: '市场广度', en: 'Market Breadth', ja: '市場の幅', fr: 'Ampleur du marché', de: 'Marktbreite', ru: 'Широта рынка' })}</Label>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        <EtfRow ticker="SPY" sublabel={t(lang, '市值加权', 'cap-wtd', '時価加重')} value={breadth.spy_chg} />
-        <EtfRow ticker="RSP" sublabel={t(lang, '等权重',   'eq-wtd',  '均等加重')} value={breadth.rsp_chg} />
-        <EtfRow ticker="IWM" sublabel={t(lang, '小盘股',   'sm-cap',  '小型株')}   value={breadth.iwm_chg} />
+        <EtfRow ticker="SPY" sublabel={tr(lang, { zh: '市值加权', en: 'cap-wtd', ja: '時価加重', fr: 'pondéré cap.', de: 'kap.-gew.', ru: 'взвеш. по кап.' })} value={breadth.spy_chg} />
+        <EtfRow ticker="RSP" sublabel={tr(lang, { zh: '等权重',   en: 'eq-wtd',  ja: '均等加重', fr: 'équipondéré', de: 'gleichgew.', ru: 'равновес.' })} value={breadth.rsp_chg} />
+        <EtfRow ticker="IWM" sublabel={tr(lang, { zh: '小盘股',   en: 'sm-cap',  ja: '小型株',   fr: 'petites cap.', de: 'Small Cap', ru: 'малая кап.' })}   value={breadth.iwm_chg} />
         <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontFamily: 'JetBrains Mono', fontSize: '8px', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            {t(lang, 'RSP−SPY 分化度', 'RSP−SPY Spread', 'RSP−SPY 乖離')}
+            {tr(lang, { zh: 'RSP−SPY 分化度', en: 'RSP−SPY Spread', ja: 'RSP−SPY 乖離', fr: 'Écart RSP−SPY', de: 'RSP−SPY-Spread', ru: 'Спред RSP−SPY' })}
           </span>
           <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', fontWeight: 500, color: divColor }}>
             {div >= 0 ? '+' : ''}{Number(div).toFixed(2)}%
@@ -478,10 +539,10 @@ function CreditCard({ credit, lang }) {
 
   return (
     <Cell>
-      <Label>Credit / {t(lang, '信用市场', 'Credit Markets', '信用市場')}</Label>
+      <Label>Credit / {tr(lang, { zh: '信用市场', en: 'Credit Markets', ja: '信用市場', fr: 'Marchés du crédit', de: 'Kreditmärkte', ru: 'Кредитные рынки' })}</Label>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: '0.9rem' }}>
-        <EtfRow ticker="HYG" sublabel={t(lang, '高收益债', 'Hi-Yield', 'ハイイールド債')} value={credit.hyg_chg} />
-        <EtfRow ticker="JNK" sublabel={t(lang, '高收益债', 'Hi-Yield', 'ハイイールド債')} value={credit.jnk_chg} />
+        <EtfRow ticker="HYG" sublabel={tr(lang, { zh: '高收益债', en: 'Hi-Yield', ja: 'ハイイールド債', fr: 'Haut rendement', de: 'Hochzins', ru: 'Высокодох.' })} value={credit.hyg_chg} />
+        <EtfRow ticker="JNK" sublabel={tr(lang, { zh: '高收益债', en: 'Hi-Yield', ja: 'ハイイールド債', fr: 'Haut rendement', de: 'Hochzins', ru: 'Высокодох.' })} value={credit.jnk_chg} />
       </div>
       <div style={{
         fontFamily: 'JetBrains Mono',
@@ -494,8 +555,8 @@ function CreditCard({ credit, lang }) {
         lineHeight: 1.6,
       }}>
         {ok
-          ? t(lang, '// 信用市场正常', '// CREDIT STABLE', '// 信用市場は正常')
-          : t(lang, '⚠ 信用市场承压，谨慎抄底', '⚠ CREDIT STRESS — CAUTION', '⚠ 信用市場に圧力 — 慎重に')}
+          ? tr(lang, { zh: '// 信用市场正常', en: '// CREDIT STABLE', ja: '// 信用市場は正常', fr: '// CRÉDIT STABLE', de: '// KREDIT STABIL', ru: '// КРЕДИТ СТАБИЛЕН' })
+          : tr(lang, { zh: '⚠ 信用市场承压，谨慎抄底', en: '⚠ CREDIT STRESS — CAUTION', ja: '⚠ 信用市場に圧力 — 慎重に', fr: '⚠ STRESS DE CRÉDIT — PRUDENCE', de: '⚠ KREDITSTRESS — VORSICHT', ru: '⚠ КРЕДИТНЫЙ СТРЕСС — ОСТОРОЖНО' })}
       </div>
     </Cell>
   )
@@ -506,12 +567,12 @@ function CrossAssetCard({ ca, lang }) {
 
   return (
     <Cell colSpan style={{ borderTop: '1px solid var(--border)' }}>
-      <Label>Cross-Asset / {t(lang, '跨资产', 'Multi-Asset', 'クロスアセット')}</Label>
+      <Label>Cross-Asset / {tr(lang, { zh: '跨资产', en: 'Multi-Asset', ja: 'クロスアセット', fr: 'Multi-actifs', de: 'Multi-Asset', ru: 'Мультиактив' })}</Label>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem 1rem', marginBottom: '0.9rem' }}>
         {[
-          { ticker: 'TLT', sub: t(lang, '美国长债', 'US LT Bonds', '米長期国債'), v: ca.tlt_chg },
-          { ticker: 'GLD', sub: t(lang, '黄金',     'Gold',        '金'),         v: ca.gld_chg },
-          { ticker: 'UUP', sub: t(lang, '美元指数', 'USD Index',   '米ドル指数'), v: ca.uup_chg },
+          { ticker: 'TLT', sub: tr(lang, { zh: '美国长债', en: 'US LT Bonds', ja: '米長期国債', fr: 'Oblig. LT US', de: 'US-Langläufer', ru: 'Долгоср. облиг. США' }), v: ca.tlt_chg },
+          { ticker: 'GLD', sub: tr(lang, { zh: '黄金',     en: 'Gold',        ja: '金',         fr: 'Or',           de: 'Gold',          ru: 'Золото' }),         v: ca.gld_chg },
+          { ticker: 'UUP', sub: tr(lang, { zh: '美元指数', en: 'USD Index',   ja: '米ドル指数', fr: 'Indice USD',   de: 'USD-Index',     ru: 'Индекс доллара' }), v: ca.uup_chg },
         ].map(({ ticker, sub, v }) => (
           <div key={ticker}>
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', fontWeight: 500, color: 'var(--text)', letterSpacing: '0.06em', marginBottom: '0.2rem' }}>{ticker}</div>
@@ -572,12 +633,12 @@ export default function MarketPulse() {
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ margin: 0, fontFamily: 'Syne', fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-            {lang === 'zh' ? 'Jessie Signal' : 'Jessie Signal'}
+            Jessie Signal
           </h1>
           {lastUpdate && (
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.12em', marginTop: '0.3rem' }}>
-              {t(lang, '更新于', 'UPDATED', '更新')}{' '}
-              {lastUpdate.toLocaleTimeString(lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US')}
+              {tr(lang, { zh: '更新于', en: 'UPDATED', ja: '更新', fr: 'MAJ', de: 'STAND', ru: 'ОБНОВЛЕНО' })}{' '}
+              {lastUpdate.toLocaleTimeString(DATE_LOCALE[lang] ?? 'en-US')}
               <span style={{ color: 'var(--text-muted)', marginLeft: '0.6rem' }}>· 5MIN CACHE</span>
             </div>
           )}
@@ -600,7 +661,7 @@ export default function MarketPulse() {
           onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border-bright)'; }}
         >
-          {t(lang, '刷新', 'REFRESH', '更新')}
+          {tr(lang, { zh: '刷新', en: 'REFRESH', ja: '更新', fr: 'ACTUALISER', de: 'AKTUALISIEREN', ru: 'ОБНОВИТЬ' })}
         </button>
       </div>
 
@@ -642,14 +703,24 @@ export default function MarketPulse() {
             lineHeight: 2,
           }}>
             <p style={{ margin: 0 }}>
-              {t(lang,
-                '// 情景分类基于阈值自动推断 · 仅供参考 · 不构成投资建议',
-                '// SCENARIO CLASSIFICATION IS AUTO-DERIVED · FOR REFERENCE ONLY · NOT INVESTMENT ADVICE',
-                '// シナリオ分類はしきい値から自動導出 · 参考情報のみ · 投資アドバイスではありません'
-              )}
+              {tr(lang, {
+                zh: '// 情景分类基于阈值自动推断 · 仅供参考 · 不构成投资建议',
+                en: '// SCENARIO CLASSIFICATION IS AUTO-DERIVED · FOR REFERENCE ONLY · NOT INVESTMENT ADVICE',
+                ja: '// シナリオ分類はしきい値から自動導出 · 参考情報のみ · 投資アドバイスではありません',
+                fr: "// CLASSIFICATION AUTO-DÉRIVÉE DE SEUILS · À TITRE INDICATIF · PAS UN CONSEIL EN INVESTISSEMENT",
+                de: '// SZENARIO AUTOMATISCH AUS SCHWELLEN ABGELEITET · NUR ZUR INFORMATION · KEINE ANLAGEBERATUNG',
+                ru: '// СЦЕНАРИЙ ОПРЕДЕЛЁН АВТОМАТИЧЕСКИ ПО ПОРОГАМ · ТОЛЬКО ДЛЯ СПРАВКИ · НЕ ИНВЕСТИЦИОННЫЙ СОВЕТ',
+              })}
             </p>
             <p style={{ margin: 0 }}>
-              {t(lang, '// 基于 ', '// built on a method by ', '// ')}
+              {tr(lang, {
+                zh: '// 基于 ',
+                en: '// built on a method by ',
+                ja: '// ',
+                fr: "// d'après une méthode de ",
+                de: '// basiert auf einer Methode von ',
+                ru: '// на основе метода ',
+              })}
               <a
                 href="https://youtu.be/MfB9zaul_pk?si=xAmPQfPTopR689eU"
                 target="_blank"
@@ -666,7 +737,7 @@ export default function MarketPulse() {
               >
                 Jessie
               </a>
-              {t(lang, ' 的视频方法构建', '', ' の動画を参考に構築')}
+              {tr(lang, { zh: ' 的视频方法构建', en: '', ja: ' の動画を参考に構築', fr: '', de: '', ru: '' })}
             </p>
           </div>
         </>

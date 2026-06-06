@@ -1,17 +1,20 @@
 import { createContext, useContext, useState } from 'react'
+import { LANGS } from './lang.js'
 
-const LANGS = ['zh', 'en', 'ja']
+// First visit: use the browser's language if we support it, else English.
+function detectLang() {
+  const stored = localStorage.getItem('mp_lang')
+  if (stored && LANGS.includes(stored)) return stored
+  const nav = (typeof navigator !== 'undefined' ? navigator.language : 'en')
+    .slice(0, 2)
+    .toLowerCase()
+  return LANGS.includes(nav) ? nav : 'en'
+}
 
-const I18nContext = createContext({ lang: 'zh', toggle: () => {} })
+const I18nContext = createContext({ lang: 'en', setLang: () => {} })
 
 export function I18nProvider({ children }) {
-  const [lang, setLang] = useState(() => localStorage.getItem('mp_lang') || 'zh')
-
-  function toggle() {
-    const next = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]
-    setLang(next)
-    localStorage.setItem('mp_lang', next)
-  }
+  const [lang, setLang] = useState(detectLang)
 
   function setLangDirect(l) {
     setLang(l)
@@ -19,7 +22,7 @@ export function I18nProvider({ children }) {
   }
 
   return (
-    <I18nContext.Provider value={{ lang, toggle, setLang: setLangDirect }}>
+    <I18nContext.Provider value={{ lang, setLang: setLangDirect }}>
       {children}
     </I18nContext.Provider>
   )
