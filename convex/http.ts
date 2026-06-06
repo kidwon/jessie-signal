@@ -8,6 +8,32 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 }
 
+// Regional-indicator flag emoji from an ISO 3166-1 alpha-2 code.
+function flag(cc: string): string {
+  if (!cc || cc.length !== 2) return ""
+  return String.fromCodePoint(
+    ...[...cc.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
+  )
+}
+
+// Resolve an IP to a display-ready country string (e.g. "🇺🇸 United States")
+// via a free, keyless GeoIP service. Returns undefined on any failure.
+async function lookupCountry(ip: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(
+      `https://ipwho.is/${ip}?fields=success,country,country_code`,
+    )
+    const data = await res.json()
+    if (data?.success && data.country) {
+      const f = flag(data.country_code ?? "")
+      return f ? `${f} ${data.country}` : data.country
+    }
+  } catch {
+    // network/parse error — leave country unset
+  }
+  return undefined
+}
+
 const COLORS: Record<string, { bg: string; accent: string; badge: string }> = {
   gray:   { bg: "#1a1a1a", accent: "#888888", badge: "#333333" },
   blue:   { bg: "#0d1b2a", accent: "#4a9eff", badge: "#1a3a5c" },
@@ -100,7 +126,15 @@ http.route({
     const fwd = request.headers.get("x-forwarded-for") ?? ""
     const ip = fwd.split(",")[0].trim() || "unknown"
     const lang = new URL(request.url).searchParams.get("lang") ?? undefined
-    await ctx.runMutation(internal.visits.recordVisit, { ip, lang })
+
+    // Only geolocate the first hit from this IP today, to spare the free quota.
+    let country: string | undefined
+    if (ip !== "unknown") {
+      const seen = await ctx.runQuery(internal.visits.wasVisitedToday, { ip })
+      if (!seen) country = await lookupCountry(ip)
+    }
+
+    await ctx.runMutation(internal.visits.recordVisit, { ip, lang, country })
     return new Response(null, { status: 204, headers: CORS })
   }),
 })

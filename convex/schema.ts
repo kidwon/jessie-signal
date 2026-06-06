@@ -6,6 +6,7 @@ export default defineSchema({
     timestamp: v.number(),
     lang: v.optional(v.string()),
     ip: v.optional(v.string()),
+    country: v.optional(v.string()),
   })
     .index("by_timestamp", ["timestamp"])
     .index("by_ip", ["ip", "timestamp"]),
