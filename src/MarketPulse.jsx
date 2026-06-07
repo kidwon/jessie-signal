@@ -430,6 +430,22 @@ function Sparkline({ data, color, label, width = 104, height = 26 }) {
   )
 }
 
+// VIX roll-over: peaked in panic territory (≥30) within the recent window and
+// has since declined ≥10%. The guide's key bottom-confirmation signal — only
+// possible with history, not a single snapshot.
+function detectVixRollover(series) {
+  if (!series || series.length < 4) return null
+  const w = series.slice(-14)
+  let peak = -Infinity
+  let peakIdx = -1
+  w.forEach((v, i) => { if (v > peak) { peak = v; peakIdx = i } })
+  const current = w[w.length - 1]
+  if (peak >= 30 && peakIdx < w.length - 1 && current <= peak * 0.9) {
+    return { peak: Math.round(peak * 10) / 10 }
+  }
+  return null
+}
+
 function ChgBadge({ value }) {
   if (value == null) return (
     <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
@@ -500,6 +516,7 @@ function VIXCard({ vix, lang, history }) {
   const pct   = Math.min(100, Math.max(0, ((v - 10) / 50) * 100))
   const color = v < 18 ? 'var(--green)' : v < 25 ? 'var(--accent)' : v < 30 ? '#f97316' : 'var(--red)'
   const series = history?.map(h => h.vix) ?? []
+  const rollover = detectVixRollover(series)
 
   return (
     <Cell borderRight borderBottom>
@@ -513,6 +530,28 @@ function VIXCard({ vix, lang, history }) {
       </div>
       <RulerBar pct={pct} color={color} ticks={[4, 16, 30, 40, 60]} />
       <TickLabels labels={['12', '18', '25', '30', '40+']} />
+      {rollover && (
+        <div style={{
+          marginTop: '0.9rem',
+          fontFamily: 'JetBrains Mono',
+          fontSize: '8px',
+          letterSpacing: '0.06em',
+          padding: '0.45rem 0.7rem',
+          borderLeft: '2px solid var(--green)',
+          color: 'var(--green)',
+          background: 'var(--green-dim)',
+          lineHeight: 1.6,
+        }}>
+          {tr(lang, {
+            zh: `↘ VIX 已从高位回落（峰值 ${rollover.peak}）— 抄底确认度提升`,
+            en: `↘ VIX rolling over from a peak of ${rollover.peak} — dip-buy confidence rising`,
+            ja: `↘ VIX が高値（ピーク ${rollover.peak}）から反落 — 押し目買いの確度が上昇`,
+            fr: `↘ Le VIX reflue après un pic de ${rollover.peak} — confiance d'achat sur repli accrue`,
+            de: `↘ VIX dreht vom Hoch (Spitze ${rollover.peak}) ab — höhere Zuversicht für Nachkäufe`,
+            ru: `↘ VIX откатывается с пика ${rollover.peak} — уверенность в покупке просадки растёт`,
+          })}
+        </div>
+      )}
     </Cell>
   )
 }
