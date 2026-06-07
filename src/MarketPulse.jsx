@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useAction } from 'convex/react'
+import { useAction, useQuery } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { useI18n } from './i18n.jsx'
 import { tr } from './lang.js'
@@ -405,6 +405,31 @@ function TickLabels({ labels }) {
   )
 }
 
+// Inline SVG trend line. Returns null until there are ≥2 points.
+function Sparkline({ data, color, label, width = 104, height = 26 }) {
+  if (!data || data.length < 2) return null
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * (width - 2) + 1
+    const y = height - 1 - ((v - min) / (range)) * (height - 2)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const [lx, ly] = pts[pts.length - 1].split(',')
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+      <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }} aria-hidden="true">
+        <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" opacity="0.85" />
+        <circle cx={lx} cy={ly} r="1.8" fill={color} />
+      </svg>
+      {label && (
+        <span style={{ fontFamily: 'JetBrains Mono', fontSize: '7px', color: 'var(--text-muted)', letterSpacing: '0.1em' }}>{label}</span>
+      )}
+    </div>
+  )
+}
+
 function ChgBadge({ value }) {
   if (value == null) return (
     <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
@@ -468,12 +493,13 @@ function Cell({ children, borderRight, borderBottom, colSpan }) {
 }
 
 // ─── Metric cards ─────────────────────────────────────────────────────────────
-function VIXCard({ vix, lang }) {
+function VIXCard({ vix, lang, history }) {
   if (!vix) return null
   const v = vix.value
   const label = lang === 'zh' ? vix.label_zh : vix.label_en  // backend only has zh/en
   const pct   = Math.min(100, Math.max(0, ((v - 10) / 50) * 100))
   const color = v < 18 ? 'var(--green)' : v < 25 ? 'var(--accent)' : v < 30 ? '#f97316' : 'var(--red)'
+  const series = history?.map(h => h.vix) ?? []
 
   return (
     <Cell borderRight borderBottom>
@@ -481,6 +507,9 @@ function VIXCard({ vix, lang }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
         <BigNumber value={v} decimals={1} />
         <StatusLabel color={color}>{label}</StatusLabel>
+        <div style={{ marginLeft: 'auto' }}>
+          <Sparkline data={series} color={color} label="30D" />
+        </div>
       </div>
       <RulerBar pct={pct} color={color} ticks={[4, 16, 30, 40, 60]} />
       <TickLabels labels={['12', '18', '25', '30', '40+']} />
@@ -488,12 +517,13 @@ function VIXCard({ vix, lang }) {
   )
 }
 
-function FGCard({ fg, lang }) {
+function FGCard({ fg, lang, history }) {
   if (!fg) return null
   const score = fg.score
   const label = lang === 'zh' ? fg.label_zh : fg.label_en  // backend only has zh/en
   const pct   = score != null ? Math.min(100, Math.max(0, score)) : 50
   const color = score < 25 ? 'var(--red)' : score < 45 ? '#f97316' : score < 55 ? 'var(--text-dim)' : score < 75 ? 'var(--accent)' : 'var(--green)'
+  const series = history?.map(h => h.fg_score) ?? []
 
   return (
     <Cell borderBottom>
@@ -501,6 +531,9 @@ function FGCard({ fg, lang }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
         <BigNumber value={score} decimals={0} duration={1100} />
         <StatusLabel color={color}>{label}</StatusLabel>
+        <div style={{ marginLeft: 'auto' }}>
+          <Sparkline data={series} color={color} label="30D" />
+        </div>
       </div>
       <RulerBar pct={pct} color={color} ticks={[25, 50, 75]} />
       <TickLabels labels={['0', '25', '50', '75', '100']} />
@@ -630,6 +663,7 @@ function CrossAssetCard({ ca, lang }) {
 export default function MarketPulse() {
   const { lang }      = useI18n()
   const getSignals    = useAction(api.signals.get)
+  const history       = useQuery(api.history.recent, { days: 30 })
   const [data, setData]           = useState(null)
   const [loading, setLoading]     = useState(true)
   const [lastUpdate, setLastUpdate] = useState(null)
@@ -717,8 +751,8 @@ export default function MarketPulse() {
               gridTemplateColumns: '1fr 1fr',
             }}
           >
-            <VIXCard    vix={data.vix}          lang={lang} />
-            <FGCard     fg={data.fear_greed}    lang={lang} />
+            <VIXCard    vix={data.vix}          lang={lang} history={history} />
+            <FGCard     fg={data.fear_greed}    lang={lang} history={history} />
             <BreadthCard breadth={data.breadth} lang={lang} />
             <CreditCard credit={data.credit}    lang={lang} />
             <CrossAssetCard ca={data.cross_asset} lang={lang} />

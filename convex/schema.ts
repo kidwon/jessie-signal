@@ -11,6 +11,25 @@ export default defineSchema({
     .index("by_timestamp", ["timestamp"])
     .index("by_ip", ["ip", "timestamp"]),
 
+  // Periodic time-series snapshots (written by the hourly cron during US
+  // trading hours) — powers trend charts and roll-over detection.
+  marketHistory: defineTable({
+    timestamp: v.number(),
+    vix: v.number(),
+    fg_score: v.number(),
+    scenario: v.number(),
+    spy_chg: v.number(),
+    rsp_chg: v.number(),
+    iwm_chg: v.number(),
+    hyg_chg: v.number(),
+    jnk_chg: v.number(),
+    tlt_chg: v.number(),
+    gld_chg: v.number(),
+    uup_chg: v.number(),
+    divergence: v.number(),
+    credit_stress: v.boolean(),
+  }).index("by_timestamp", ["timestamp"]),
+
   marketState: defineTable({
     scenario: v.number(),
     name_zh: v.string(),

@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
+import type * as history from "../history.js";
 import type * as http from "../http.js";
 import type * as signals from "../signals.js";
 import type * as visits from "../visits.js";
@@ -19,6 +21,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
+  history: typeof history;
   http: typeof http;
   signals: typeof signals;
   visits: typeof visits;

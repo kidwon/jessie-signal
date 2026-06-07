@@ -1,8 +1,10 @@
-import { action } from "./_generated/server"
+import { action, internalAction } from "./_generated/server"
 import { v } from "convex/values"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
 const ETF = ["SPY", "RSP", "IWM", "HYG", "JNK", "TLT", "GLD", "UUP"]
+
+type Meta = { name_zh: string; name_en: string; action_zh: string; action_en: string; color: string }
 
 function classifyScenario(vix: number, fg: number, hygChg: number, jnkChg: number) {
   const creditStress = hygChg < -1.5 || jnkChg < -1.5
@@ -18,7 +20,7 @@ function classifyScenario(vix: number, fg: number, hygChg: number, jnkChg: numbe
 
   // Names/actions kept in sync with src/MarketPulse.jsx SCENARIOS (this copy is
   // used only for the OG share image via saveMarketState).
-  const META: Record<number, object> = {
+  const META: Record<number, Meta> = {
     0: { name_zh: "市场平静", name_en: "Calm", action_zh: "市场平静，无需特别操作，按计划持有或定投即可。", action_en: "Market is calm. No special action — hold or stick to your DCA plan.", color: "gray" },
     1: { name_zh: "正常调整", name_en: "Normal Correction", action_zh: "维持标准定投节奏，不必恐慌，也不必激进抄底。", action_en: "Maintain standard DCA. No need to panic or aggressively buy the dip.", color: "blue" },
     2: { name_zh: "恐慌", name_en: "Panic", action_zh: "分批建仓：先投 30%，VIX 触 30 再加 30%，VIX 破 40 或回落时投入剩余 40%。", action_en: "Tranche-based buying: deploy 30% now, +30% at VIX 30, final 40% when VIX breaks 40 or rolls over.", color: "yellow" },
@@ -46,75 +48,123 @@ function fgLabel(score: number) {
   return          { label_zh: "极度贪婪",   label_en: "Extreme Greed" }
 }
 
+// True during the US regular session (10:00–16:00 ET) on weekdays. Hourly
+// snapshots are taken only in this window.
+function isUsTradingHour(now: Date): boolean {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(now)
+  const weekday = parts.find((p) => p.type === "weekday")?.value
+  let hour = Number(parts.find((p) => p.type === "hour")?.value)
+  if (hour === 24) hour = 0
+  if (weekday === "Sat" || weekday === "Sun") return false
+  return hour >= 10 && hour <= 16
+}
+
+// Fetch all sources and compute the full signal payload (no Convex ctx needed,
+// so both the public action and the cron can reuse it).
+async function computeSignals() {
+  const FINNHUB_KEY = process.env.FINNHUB_API_KEY ?? ""
+
+  const [vixRes, fgRes, ...quoteResponses] = await Promise.all([
+    fetch("https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json"),
+    fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
+      headers: {
+        "Referer": "https://www.cnn.com/markets/fear-and-greed",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+      },
+    }),
+    ...ETF.map(s => fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_KEY}`)),
+  ])
+
+  const vixData = await vixRes.json() as { data: { current_price: number } }
+  const vix = Number(vixData.data.current_price) || 0
+
+  const fgData = await fgRes.json() as { fear_and_greed: { score: number; rating: string } }
+  const fgScore = Number(fgData.fear_and_greed?.score) || 50
+  const fgRating = fgData.fear_and_greed?.rating ?? ""
+
+  const quoteParsed = await Promise.all(quoteResponses.map(r => r.json() as Promise<{ dp?: number }>))
+  const quotes: Record<string, number> = {}
+  ETF.forEach((sym, i) => {
+    quotes[sym] = Math.round((Number(quoteParsed[i]?.dp) || 0) * 100) / 100
+  })
+
+  const hygChg = quotes["HYG"]
+  const jnkChg = quotes["JNK"]
+  const spyChg = quotes["SPY"]
+  const rspChg = quotes["RSP"]
+  const iwmChg = quotes["IWM"]
+  const tltChg = quotes["TLT"]
+  const gldChg = quotes["GLD"]
+  const uupChg = quotes["UUP"]
+
+  const crossNotes: Array<{ zh: string; en: string }> = []
+  if (tltChg < -0.5 && spyChg < -0.5) crossNotes.push({ zh: "美债收益率上升 + 股市下跌：估值压力，成长股承压", en: "Rising yields + falling equities: valuation pressure on growth stocks" })
+  if (uupChg > 0.3 && spyChg < -0.5) crossNotes.push({ zh: "美元走强 + 股市下跌：全球避险情绪", en: "Strong USD + falling equities: global risk-off sentiment" })
+  if (gldChg > 0.5 && tltChg > 0.3 && spyChg < 0) crossNotes.push({ zh: "黄金+美债双涨 + 股市下跌：避险资产轮动，经济衰退预期", en: "Gold + bonds rising with stocks falling: safe-haven rotation, recession fears" })
+  if (gldChg > 0.5 && tltChg < -0.3) crossNotes.push({ zh: "黄金涨但美债跌：通胀恐慌或货币信用危机信号", en: "Gold rising, bonds falling: inflation panic or currency crisis signal" })
+  if (crossNotes.length === 0) crossNotes.push({ zh: "跨资产暂无明显异动信号", en: "No significant cross-asset signals at this time" })
+
+  const scenarioData = classifyScenario(vix, fgScore, hygChg, jnkChg)
+
+  return {
+    updated_at: Date.now() / 1000,
+    scenario: scenarioData,
+    vix: { value: vix, ...vixLabel(vix) },
+    fear_greed: { score: Math.round(fgScore * 10) / 10, rating: fgRating, ...fgLabel(fgScore) },
+    breadth: { spy_chg: spyChg, rsp_chg: rspChg, iwm_chg: iwmChg, divergence: Math.round((rspChg - spyChg) * 100) / 100 },
+    credit: { hyg_chg: hygChg, jnk_chg: jnkChg, stress: hygChg < -1.5 || jnkChg < -1.5 },
+    cross_asset: { tlt_chg: tltChg, gld_chg: gldChg, uup_chg: uupChg, notes: crossNotes },
+  }
+}
+
 export const get = action({
   args: {},
   returns: v.any(),
-  handler: async () => {
-    const FINNHUB_KEY = process.env.FINNHUB_API_KEY ?? ""
-
-    const [vixRes, fgRes, ...quoteResponses] = await Promise.all([
-      fetch("https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json"),
-      fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
-        headers: {
-          "Referer": "https://www.cnn.com/markets/fear-and-greed",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          "Accept": "application/json, text/plain, */*",
-        },
-      }),
-      ...ETF.map(s => fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_KEY}`)),
-    ])
-
-    const vixData = await vixRes.json() as { data: { current_price: number } }
-    const vix = Number(vixData.data.current_price) || 0
-
-    const fgData = await fgRes.json() as { fear_and_greed: { score: number; rating: string } }
-    const fgScore = Number(fgData.fear_and_greed?.score) || 50
-    const fgRating = fgData.fear_and_greed?.rating ?? ""
-
-    const quoteParsed = await Promise.all(quoteResponses.map(r => r.json() as Promise<{ dp?: number }>))
-    const quotes: Record<string, number> = {}
-    ETF.forEach((sym, i) => {
-      quotes[sym] = Math.round((Number(quoteParsed[i]?.dp) || 0) * 100) / 100
-    })
-
-    const hygChg = quotes["HYG"]
-    const jnkChg = quotes["JNK"]
-    const spyChg = quotes["SPY"]
-    const rspChg = quotes["RSP"]
-    const iwmChg = quotes["IWM"]
-    const tltChg = quotes["TLT"]
-    const gldChg = quotes["GLD"]
-    const uupChg = quotes["UUP"]
-
-    const crossNotes: Array<{ zh: string; en: string }> = []
-    if (tltChg < -0.5 && spyChg < -0.5) crossNotes.push({ zh: "美债收益率上升 + 股市下跌：估值压力，成长股承压", en: "Rising yields + falling equities: valuation pressure on growth stocks" })
-    if (uupChg > 0.3 && spyChg < -0.5) crossNotes.push({ zh: "美元走强 + 股市下跌：全球避险情绪", en: "Strong USD + falling equities: global risk-off sentiment" })
-    if (gldChg > 0.5 && tltChg > 0.3 && spyChg < 0) crossNotes.push({ zh: "黄金+美债双涨 + 股市下跌：避险资产轮动，经济衰退预期", en: "Gold + bonds rising with stocks falling: safe-haven rotation, recession fears" })
-    if (gldChg > 0.5 && tltChg < -0.3) crossNotes.push({ zh: "黄金涨但美债跌：通胀恐慌或货币信用危机信号", en: "Gold rising, bonds falling: inflation panic or currency crisis signal" })
-    if (crossNotes.length === 0) crossNotes.push({ zh: "跨资产暂无明显异动信号", en: "No significant cross-asset signals at this time" })
-
-    const scenarioData = classifyScenario(vix, fgScore, hygChg, jnkChg)
+  handler: async (ctx) => {
+    const data = await computeSignals()
     try {
       await ctx.runMutation(api.visits.saveMarketState, {
-        scenario: scenarioData.scenario,
-        name_zh: scenarioData.name_zh as string,
-        name_en: scenarioData.name_en as string,
-        action_zh: scenarioData.action_zh as string,
-        action_en: scenarioData.action_en as string,
-        color: scenarioData.color as string,
-        vix,
-        fg_score: fgScore,
+        scenario: data.scenario.scenario,
+        name_zh: data.scenario.name_zh,
+        name_en: data.scenario.name_en,
+        action_zh: data.scenario.action_zh,
+        action_en: data.scenario.action_en,
+        color: data.scenario.color,
+        vix: data.vix.value,
+        fg_score: data.fear_greed.score,
       })
     } catch (_) {}
+    return data
+  },
+})
 
-    return {
-      updated_at: Date.now() / 1000,
-      scenario: scenarioData,
-      vix: { value: vix, ...vixLabel(vix) },
-      fear_greed: { score: Math.round(fgScore * 10) / 10, rating: fgRating, ...fgLabel(fgScore) },
-      breadth: { spy_chg: spyChg, rsp_chg: rspChg, iwm_chg: iwmChg, divergence: Math.round((rspChg - spyChg) * 100) / 100 },
-      credit: { hyg_chg: hygChg, jnk_chg: jnkChg, stress: hygChg < -1.5 || jnkChg < -1.5 },
-      cross_asset: { tlt_chg: tltChg, gld_chg: gldChg, uup_chg: uupChg, notes: crossNotes },
-    }
+// Hourly cron target: capture one time-series row during US trading hours.
+export const snapshot = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    if (!isUsTradingHour(new Date())) return
+    const data = await computeSignals()
+    if (!data.vix.value) return // fetch failed — don't store a zeroed row
+    await ctx.runMutation(internal.history.insertHistory, {
+      vix: data.vix.value,
+      fg_score: data.fear_greed.score,
+      scenario: data.scenario.scenario,
+      spy_chg: data.breadth.spy_chg,
+      rsp_chg: data.breadth.rsp_chg,
+      iwm_chg: data.breadth.iwm_chg,
+      hyg_chg: data.credit.hyg_chg,
+      jnk_chg: data.credit.jnk_chg,
+      tlt_chg: data.cross_asset.tlt_chg,
+      gld_chg: data.cross_asset.gld_chg,
+      uup_chg: data.cross_asset.uup_chg,
+      divergence: data.breadth.divergence,
+      credit_stress: data.credit.stress,
+    })
   },
 })
