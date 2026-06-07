@@ -20,6 +20,12 @@ const btnStyle = {
   padding: '0.3rem 0.65rem',
   cursor: 'pointer',
   transition: 'color 0.2s, border-color 0.2s',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  lineHeight: 1,
+  height: '26px',
+  boxSizing: 'border-box',
 }
 
 const hoverOn  = e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }
