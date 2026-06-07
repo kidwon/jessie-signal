@@ -172,9 +172,11 @@ function FooterControls() {
           ADMIN
         </Link>
       )}
-      <SignedIn>
-        <SubscribeToggle />
-      </SignedIn>
+      {clerkEnabled && (
+        <SignedIn>
+          <SubscribeToggle />
+        </SignedIn>
+      )}
       <AuthControls />
     </div>
   )
