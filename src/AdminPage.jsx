@@ -1,4 +1,5 @@
-import { useQuery } from 'convex/react'
+import { useEffect, useState } from 'react'
+import { useQuery, useAction } from 'convex/react'
 import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react'
 import { api } from '../convex/_generated/api'
 import { clerkEnabled } from './clerk'
@@ -46,13 +47,42 @@ const cell = {
 }
 const headCell = { ...cell, color: 'var(--text-muted)', letterSpacing: '0.1em' }
 
+const fmt = (ms) => (ms ? new Date(ms).toLocaleString() : '—')
+
+function SectionLabel({ children }) {
+  return (
+    <div style={{ fontFamily: mono, fontSize: '8px', letterSpacing: '0.2em', color: 'var(--text-dim)', textTransform: 'uppercase', margin: '2rem 0 0.8rem' }}>
+      {children}
+    </div>
+  )
+}
+
+function DataTable({ headers, children }) {
+  return (
+    <div style={{ border: '1px solid var(--border)', overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>{headers.map((h) => <th key={h} style={headCell}>{h}</th>)}</tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  )
+}
+
 function AdminData({ lang }) {
   const stats = useQuery(api.visits.stats)
   const visits = useQuery(api.visits.listRecentVisits)
+  const subscriptions = useQuery(api.subscriptions.listSubscriptions)
+  const listUsers = useAction(api.users.listUsers)
+  const [users, setUsers] = useState(null)
+  useEffect(() => { listUsers().then(setUsers).catch(() => setUsers([])) }, [listUsers])
+
+  const loading = <Notice>LOADING<span className="cursor-blink" style={{ color: 'var(--accent)' }}>_</span></Notice>
 
   return (
     <>
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
         <StatCard
           label={tr(lang, { zh: '累计独立访客', en: 'Total Visitors', ja: '累計訪問者', fr: 'Visiteurs totaux', de: 'Besucher gesamt', ru: 'Всего посетителей' })}
           value={stats?.total}
@@ -63,7 +93,56 @@ function AdminData({ lang }) {
         />
       </div>
 
-      <div style={{ fontFamily: mono, fontSize: '8px', letterSpacing: '0.2em', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '0.8rem' }}>
+      {/* Signed-in users (live from Clerk) */}
+      <SectionLabel>
+        {tr(lang, {
+          zh: `// 登录用户（${users?.length ?? '…'}）`,
+          en: `// SIGNED-IN USERS (${users?.length ?? '…'})`,
+          ja: `// ログインユーザー（${users?.length ?? '…'}）`,
+          fr: `// UTILISATEURS (${users?.length ?? '…'})`,
+          de: `// ANGEMELDETE NUTZER (${users?.length ?? '…'})`,
+          ru: `// ПОЛЬЗОВАТЕЛИ (${users?.length ?? '…'})`,
+        })}
+      </SectionLabel>
+      {users === null ? loading : (
+        <DataTable headers={['EMAIL', 'NAME', 'LAST SIGN-IN']}>
+          {users.map((u) => (
+            <tr key={u.id}>
+              <td style={{ ...cell, color: 'var(--text)' }}>{u.email ?? '—'}</td>
+              <td style={cell}>{u.name ?? '—'}</td>
+              <td style={cell}>{fmt(u.lastSignInAt)}</td>
+            </tr>
+          ))}
+          {users.length === 0 && <tr><td style={cell} colSpan={3}>—</td></tr>}
+        </DataTable>
+      )}
+
+      {/* Alert subscribers */}
+      <SectionLabel>
+        {tr(lang, {
+          zh: `// 订阅用户（${subscriptions?.length ?? '…'}）`,
+          en: `// SUBSCRIBERS (${subscriptions?.length ?? '…'})`,
+          ja: `// 購読者（${subscriptions?.length ?? '…'}）`,
+          fr: `// ABONNÉS (${subscriptions?.length ?? '…'})`,
+          de: `// ABONNENTEN (${subscriptions?.length ?? '…'})`,
+          ru: `// ПОДПИСЧИКИ (${subscriptions?.length ?? '…'})`,
+        })}
+      </SectionLabel>
+      {subscriptions === undefined ? loading : (
+        <DataTable headers={['EMAIL', 'LANG', 'SINCE']}>
+          {subscriptions.map((s) => (
+            <tr key={s._id}>
+              <td style={{ ...cell, color: 'var(--text)' }}>{s.email}</td>
+              <td style={cell}>{s.lang ?? '—'}</td>
+              <td style={cell}>{fmt(s.createdAt)}</td>
+            </tr>
+          ))}
+          {subscriptions.length === 0 && <tr><td style={cell} colSpan={3}>—</td></tr>}
+        </DataTable>
+      )}
+
+      {/* Recent visits */}
+      <SectionLabel>
         {tr(lang, {
           zh: '// 最近访问明细（最多 200 条）',
           en: '// RECENT VISITS (UP TO 200)',
@@ -72,36 +151,19 @@ function AdminData({ lang }) {
           de: '// LETZTE BESUCHE (BIS ZU 200)',
           ru: '// НЕДАВНИЕ ВИЗИТЫ (ДО 200)',
         })}
-      </div>
-
-      {visits === undefined ? (
-        <Notice>LOADING<span className="cursor-blink" style={{ color: 'var(--accent)' }}>_</span></Notice>
-      ) : (
-        <div style={{ border: '1px solid var(--border)', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={headCell}>TIME</th>
-                <th style={headCell}>IP</th>
-                <th style={headCell}>COUNTRY</th>
-                <th style={headCell}>LANG</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visits.map((v) => (
-                <tr key={v._id}>
-                  <td style={cell}>{new Date(v.timestamp).toLocaleString()}</td>
-                  <td style={{ ...cell, color: 'var(--text)' }}>{v.ip ?? '—'}</td>
-                  <td style={cell}>{v.country ?? '—'}</td>
-                  <td style={cell}>{v.lang ?? '—'}</td>
-                </tr>
-              ))}
-              {visits.length === 0 && (
-                <tr><td style={cell} colSpan={4}>—</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      </SectionLabel>
+      {visits === undefined ? loading : (
+        <DataTable headers={['TIME', 'IP', 'COUNTRY', 'LANG']}>
+          {visits.map((v) => (
+            <tr key={v._id}>
+              <td style={cell}>{fmt(v.timestamp)}</td>
+              <td style={{ ...cell, color: 'var(--text)' }}>{v.ip ?? '—'}</td>
+              <td style={cell}>{v.country ?? '—'}</td>
+              <td style={cell}>{v.lang ?? '—'}</td>
+            </tr>
+          ))}
+          {visits.length === 0 && <tr><td style={cell} colSpan={4}>—</td></tr>}
+        </DataTable>
       )}
     </>
   )

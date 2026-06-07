@@ -52,6 +52,27 @@ export const unsubscribe = mutation({
   },
 });
 
+// Admin-only: full subscriber list for the admin dashboard.
+export const listSubscriptions = query({
+  args: {},
+  handler: async (ctx) => {
+    const id = await ctx.auth.getUserIdentity();
+    const email = id?.email?.toLowerCase();
+    const admins = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    if (!email || !admins.includes(email)) throw new Error("Not authorized");
+    const rows = await ctx.db.query("subscriptions").order("desc").collect();
+    return rows.map((r) => ({
+      _id: r._id,
+      email: r.email,
+      lang: r.lang ?? null,
+      createdAt: r.createdAt,
+    }));
+  },
+});
+
 // Internal: recipient list for the notify action.
 export const listSubscribers = internalQuery({
   args: {},

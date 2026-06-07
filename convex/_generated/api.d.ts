@@ -14,6 +14,7 @@ import type * as http from "../http.js";
 import type * as notify from "../notify.js";
 import type * as signals from "../signals.js";
 import type * as subscriptions from "../subscriptions.js";
+import type * as users from "../users.js";
 import type * as visits from "../visits.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   notify: typeof notify;
   signals: typeof signals;
   subscriptions: typeof subscriptions;
+  users: typeof users;
   visits: typeof visits;
 }>;
 
