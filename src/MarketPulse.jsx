@@ -637,8 +637,8 @@ function CreditCard({ credit, lang }) {
     <Cell>
       <Label>Credit / {tr(lang, { zh: '信用市场', en: 'Credit Markets', ja: '信用市場', fr: 'Marchés du crédit', de: 'Kreditmärkte', ru: 'Кредитные рынки' })}</Label>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: '0.9rem' }}>
-        <EtfRow ticker="HYG" sublabel={tr(lang, { zh: '高收益债', en: 'Hi-Yield', ja: 'ハイイールド債', fr: 'Haut rendement', de: 'Hochzins', ru: 'Высокодох.' })} value={credit.hyg_chg} />
-        <EtfRow ticker="JNK" sublabel={tr(lang, { zh: '高收益债', en: 'Hi-Yield', ja: 'ハイイールド債', fr: 'Haut rendement', de: 'Hochzins', ru: 'Высокодох.' })} value={credit.jnk_chg} />
+        <EtfRow ticker="HYG" sublabel={tr(lang, { zh: '高收益债', en: 'Hi-Yield', ja: 'ハイイールド債', fr: 'Haut rendement', de: 'Hochzins', ru: 'Высокодох.' }) + ' · iShares'} value={credit.hyg_chg} />
+        <EtfRow ticker="JNK" sublabel={tr(lang, { zh: '高收益债', en: 'Hi-Yield', ja: 'ハイイールド債', fr: 'Haut rendement', de: 'Hochzins', ru: 'Высокодох.' }) + ' · SPDR'} value={credit.jnk_chg} />
       </div>
       <div style={{
         fontFamily: 'JetBrains Mono',
