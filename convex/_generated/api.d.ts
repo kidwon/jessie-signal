@@ -11,7 +11,9 @@
 import type * as crons from "../crons.js";
 import type * as history from "../history.js";
 import type * as http from "../http.js";
+import type * as notify from "../notify.js";
 import type * as signals from "../signals.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as visits from "../visits.js";
 
 import type {
@@ -24,7 +26,9 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   history: typeof history;
   http: typeof http;
+  notify: typeof notify;
   signals: typeof signals;
+  subscriptions: typeof subscriptions;
   visits: typeof visits;
 }>;
 

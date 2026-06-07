@@ -1,5 +1,17 @@
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
+
+// Most recent snapshot (for scenario-change detection). Internal.
+export const latest = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("marketHistory")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .first();
+  },
+});
 
 // Internal: only the snapshot cron writes history.
 export const insertHistory = internalMutation({

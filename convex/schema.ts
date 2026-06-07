@@ -30,6 +30,14 @@ export default defineSchema({
     credit_stress: v.boolean(),
   }).index("by_timestamp", ["timestamp"]),
 
+  // Logged-in users who opted into scenario-change email alerts.
+  subscriptions: defineTable({
+    clerkUserId: v.string(),
+    email: v.string(),
+    lang: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_user", ["clerkUserId"]),
+
   marketState: defineTable({
     scenario: v.number(),
     name_zh: v.string(),

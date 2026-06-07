@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useQuery } from 'convex/react'
+import { useQuery, useMutation } from 'convex/react'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 import { api } from '../convex/_generated/api'
@@ -128,11 +128,33 @@ function AuthControls() {
   )
 }
 
-// Bottom-of-page controls: admin entry (admins only) + sign in / user button.
+// Scenario-alert subscribe toggle — only for signed-in users (the login-gated
+// feature). Reads/writes the subscriptions table via auth-scoped functions.
+function SubscribeToggle() {
+  const { lang } = useI18n()
+  const sub = useQuery(api.subscriptions.mySubscription)
+  const subscribe = useMutation(api.subscriptions.subscribe)
+  const unsubscribe = useMutation(api.subscriptions.unsubscribe)
+  if (sub === undefined) return null
+  return (
+    <button
+      style={{ ...btnStyle, color: sub ? 'var(--accent)' : 'var(--text-dim)', borderColor: sub ? 'var(--accent)' : 'var(--border-bright)' }}
+      onMouseEnter={hoverOn}
+      onMouseLeave={e => { if (!sub) hoverOff(e) }}
+      onClick={() => { (sub ? unsubscribe() : subscribe({ lang })).catch(() => {}) }}
+    >
+      {sub
+        ? tr(lang, { zh: '🔔 已订阅', en: '🔔 SUBSCRIBED', ja: '🔔 通知オン', fr: '🔔 ABONNÉ', de: '🔔 ABONNIERT', ru: '🔔 ПОДПИСАН' })
+        : tr(lang, { zh: '🔔 订阅提醒', en: '🔔 ALERTS', ja: '🔔 通知', fr: '🔔 ALERTES', de: '🔔 ALARME', ru: '🔔 ОПОВЕЩ.' })}
+    </button>
+  )
+}
+
+// Bottom-of-page controls: admin entry (admins only) + alert subscribe + auth.
 function FooterControls() {
   const isAdmin = useQuery(api.visits.isAdmin)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'center' }}>
       {isAdmin && (
         <Link
           to="/admin"
@@ -150,6 +172,9 @@ function FooterControls() {
           ADMIN
         </Link>
       )}
+      <SignedIn>
+        <SubscribeToggle />
+      </SignedIn>
       <AuthControls />
     </div>
   )
