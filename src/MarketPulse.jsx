@@ -36,23 +36,23 @@ const DATE_LOCALE = { zh: 'zh-CN', en: 'en-US', ja: 'ja-JP', fr: 'fr-FR', de: 'd
 const SCENARIOS = [
   {
     num: 0,
-    short: { zh: '不明', en: 'UNK', ja: '不明', fr: 'N/D', de: 'UNKL', ru: 'Н/Д' },
-    name: { zh: '信号不明', en: 'UNCLEAR', ja: 'シグナル不明', fr: 'SIGNAL FLOU', de: 'UNKLAR', ru: 'НЕЯСНО' },
+    short: { zh: '平静', en: 'CALM', ja: '平穏', fr: 'CALME', de: 'RUHIG', ru: 'ШТИЛЬ' },
+    name: { zh: '市场平静', en: 'CALM', ja: '市場は平穏', fr: 'MARCHÉ CALME', de: 'RUHIGER MARKT', ru: 'СПОКОЙНЫЙ РЫНОК' },
     cond: {
-      zh: 'VIX 处于中间区间，恐贪指数未达极端',
-      en: 'VIX in middle range, F&G not at extremes',
-      ja: 'VIXは中間域、恐怖&貪欲指数は極端ではない',
-      fr: 'VIX en zone médiane, F&G hors des extrêmes',
-      de: 'VIX im mittleren Bereich, F&G nicht extrem',
-      ru: 'VIX в среднем диапазоне, индекс страха и жадности не на экстремуме',
+      zh: 'VIX < 18，市场平静，情绪未达极端',
+      en: 'VIX < 18, market calm, sentiment not at extremes',
+      ja: 'VIX < 18、市場は平穏でセンチメントも極端でない',
+      fr: 'VIX < 18, marché calme, sentiment sans extrême',
+      de: 'VIX < 18, ruhiger Markt, keine Extreme',
+      ru: 'VIX < 18, рынок спокоен, настроения без крайностей',
     },
     action: {
-      zh: '等待更清晰的信号，保持观望。',
-      en: 'Wait for clearer signals. Stay on the sidelines.',
-      ja: '明確なシグナルを待ちましょう。様子見が賢明です。',
-      fr: "Attendez des signaux plus clairs. Restez à l'écart.",
-      de: 'Auf klarere Signale warten. Abwarten.',
-      ru: 'Дождитесь более чётких сигналов. Оставайтесь в стороне.',
+      zh: '市场平静，无需特别操作，按计划持有或定投即可。',
+      en: 'Market is calm. No special action — hold or stick to your DCA plan.',
+      ja: '市場は平穏。特別な操作は不要、保有または積立を継続。',
+      fr: 'Marché calme. Aucune action particulière — conservez ou poursuivez vos versements programmés.',
+      de: 'Ruhiger Markt. Keine besondere Aktion — halten oder Sparplan fortsetzen.',
+      ru: 'Рынок спокоен. Особых действий не нужно — держите или продолжайте регулярные покупки.',
     },
     color: '#8888aa', glow: 'rgba(136,136,170,0.25)',
   },
@@ -83,12 +83,12 @@ const SCENARIOS = [
     short: { zh: '恐慌', en: 'PAN', ja: 'パニック', fr: 'PANIQUE', de: 'PANIK', ru: 'ПАНИКА' },
     name: { zh: '恐慌', en: 'PANIC', ja: 'パニック', fr: 'PANIQUE', de: 'PANIK', ru: 'ПАНИКА' },
     cond: {
-      zh: 'VIX 25–35，恐贪指数 < 25，信用市场尚稳',
-      en: 'VIX 25–35, F&G < 25, credit markets stable',
-      ja: 'VIX 25–35、恐怖指数 < 25、信用市場は安定',
-      fr: 'VIX 25–35, F&G < 25, marchés du crédit stables',
-      de: 'VIX 25–35, F&G < 25, Kreditmärkte stabil',
-      ru: 'VIX 25–35, индекс < 25, кредитные рынки стабильны',
+      zh: 'VIX ≥ 30，或 VIX 25–35 且恐贪指数 < 25，信用市场尚稳',
+      en: 'VIX ≥ 30, or VIX 25–35 with F&G < 25, credit still stable',
+      ja: 'VIX ≥ 30、または VIX 25–35 かつ恐怖指数 < 25、信用市場は安定',
+      fr: 'VIX ≥ 30, ou VIX 25–35 avec F&G < 25, crédit encore stable',
+      de: 'VIX ≥ 30, oder VIX 25–35 mit F&G < 25, Kredit noch stabil',
+      ru: 'VIX ≥ 30, или VIX 25–35 при F&G < 25, кредит стабилен',
     },
     action: {
       zh: '分批建仓：先投 30%，VIX 触 30 再加 30%，VIX 破 40 或回落时投入剩余 40%。',
@@ -512,6 +512,17 @@ function BreadthCard({ breadth, lang }) {
   if (!breadth) return null
   const div      = breadth.divergence
   const divColor = div < -1 ? 'var(--red)' : div < 0 ? 'var(--accent)' : 'var(--green)'
+  const divBg    = div < -1 ? 'var(--red-dim)' : div < 0 ? 'var(--accent-glow)' : 'var(--green-dim)'
+  // Equal-weight (RSP) vs cap-weight (SPY): positive = broad participation,
+  // negative = a few heavyweights masking a weaker average stock. One-day
+  // spread is noisy, so phrased as a directional hint.
+  const divText  = tr(lang,
+    div < -1
+      ? { zh: '⚠ 广度恶化：少数巨头支撑，根基脆弱', en: '⚠ BREADTH DETERIORATING — propped up by a few giants, fragile base', ja: '⚠ 広度が悪化：少数の巨大株が支え、基盤は脆弱', fr: '⚠ AMPLEUR EN DÉGRADATION — portée par quelques géants, base fragile', de: '⚠ BREITE VERSCHLECHTERT — von wenigen Giganten gestützt, fragile Basis', ru: '⚠ ШИРОТА УХУДШАЕТСЯ — держат несколько гигантов, база хрупкая' }
+      : div < 0
+      ? { zh: '// 广度偏弱：行情集中于少数权重股', en: '// BREADTH NARROWING — led by a few heavyweights', ja: '// 広度はやや弱い：少数の主力株に集中', fr: '// AMPLEUR FAIBLE — portée par quelques poids lourds', de: '// BREITE SCHWACH — von wenigen Schwergewichten getragen', ru: '// ШИРОТА СЛАБАЯ — тянут несколько тяжеловесов' }
+      : { zh: '// 广度健康：涨跌普遍参与，非少数权重股主导', en: '// BREADTH HEALTHY — broad participation, not just mega-caps', ja: '// 広度は健全：値動きは広く参加、少数の大型株頼みではない', fr: '// AMPLEUR SAINE — participation large, pas seulement les méga-caps', de: '// BREITE GESUND — breite Beteiligung, nicht nur Mega-Caps', ru: '// ШИРОТА В НОРМЕ — широкое участие, не только мегакапы' }
+  )
 
   return (
     <Cell borderRight>
@@ -528,6 +539,19 @@ function BreadthCard({ breadth, lang }) {
             {div >= 0 ? '+' : ''}{Number(div).toFixed(2)}%
           </span>
         </div>
+      </div>
+      <div style={{
+        fontFamily: 'JetBrains Mono',
+        fontSize: '8px',
+        letterSpacing: '0.08em',
+        padding: '0.45rem 0.7rem',
+        marginTop: '0.9rem',
+        borderLeft: `2px solid ${divColor}`,
+        color: divColor,
+        background: divBg,
+        lineHeight: 1.6,
+      }}>
+        {divText}
       </div>
     </Cell>
   )
@@ -582,7 +606,14 @@ function CrossAssetCard({ ca, lang }) {
         ))}
       </div>
       {ca.notes?.length > 0 && (
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+        <div style={{
+          padding: '0.55rem 0.7rem',
+          borderLeft: '2px solid var(--border-bright)',
+          background: 'var(--neutral-dim)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.3rem',
+        }}>
           {ca.notes.map((n, i) => (
             <p key={i} style={{ margin: 0, fontFamily: 'Syne', fontSize: '11px', color: 'var(--text-dim)', lineHeight: 1.55 }}>
               <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--text-muted)', marginRight: '0.4rem' }}>//</span>

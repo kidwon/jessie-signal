@@ -7,20 +7,24 @@ const ETF = ["SPY", "RSP", "IWM", "HYG", "JNK", "TLT", "GLD", "UUP"]
 function classifyScenario(vix: number, fg: number, hygChg: number, jnkChg: number) {
   const creditStress = hygChg < -1.5 || jnkChg < -1.5
   let num: number
-  if (vix < 18 && fg > 75) num = 5
-  else if (vix >= 35 && fg < 15 && !creditStress) num = 3
-  else if (vix >= 30 && creditStress) num = 4
-  else if (vix >= 25 && vix < 35 && fg < 25) num = 2
-  else if (vix >= 18 && vix < 25) num = 1
+  // Severity-ordered, gap-free. Credit stress is the top red flag; high VIX is
+  // panic even when sentiment isn't extreme; calm low-VIX falls through to 0.
+  if (creditStress && vix >= 30) num = 4
+  else if (vix >= 35 && fg < 15) num = 3
+  else if (vix >= 30 || (vix >= 25 && fg < 25)) num = 2
+  else if (vix < 18 && fg > 75) num = 5
+  else if (vix >= 18) num = 1
   else num = 0
 
+  // Names/actions kept in sync with src/MarketPulse.jsx SCENARIOS (this copy is
+  // used only for the OG share image via saveMarketState).
   const META: Record<number, object> = {
-    0: { name_zh: "信号不明",           name_en: "Unclear",                      action_zh: "等待更清晰的信号，保持观望。",                                                                                  action_en: "Wait for clearer signals. Stay on the sidelines.",                                                                              color: "gray"   },
-    1: { name_zh: "正常调整",           name_en: "Normal Correction",             action_zh: "维持标准定投节奏，不必恐慌，也不必激进抄底。",                                                               action_en: "Maintain standard DCA. No need to panic or aggressively buy the dip.",                                                           color: "blue"   },
-    2: { name_zh: "恐慌",              name_en: "Panic",                          action_zh: "分批建仓：先用闲置资金的 30%，VIX 触 30 再加 30%，VIX 破 40 或明显回落时投入剩余 40%。",                     action_en: "Tranche-based buying: deploy 30% now, another 30% at VIX 30, final 40% when VIX breaks 40 or rolls over.",                       color: "yellow" },
-    3: { name_zh: "极度恐慌（可抄底）", name_en: "Extreme Panic (Buy Opportunity)", action_zh: "积极布局优质核心资产，始终保留部分现金，切勿一次性全仓。",                                              action_en: "Aggressively target quality assets. Always preserve some cash — never go all-in at once.",                                         color: "green"  },
-    4: { name_zh: "系统性风险（不可抄底）", name_en: "Systemic Risk (Do NOT Buy)", action_zh: "绝对不要急于抄底。降低杠杆，减持高 Beta 股，储备现金，等待信用市场企稳信号。",                           action_en: "Do not rush to buy the dip. Reduce leverage, cut high-beta stocks, stockpile cash.",                                              color: "red"    },
-    5: { name_zh: "极度贪婪（减仓信号）", name_en: "Extreme Greed (De-risk)",      action_zh: "市场估值已拉伸。逐步减仓，轮换至防御性资产，可考虑 Covered Call 锁定收益。",                              action_en: "Valuations are stretched. Scale back exposure, rotate into defensive assets, write Covered Calls.",                               color: "purple" },
+    0: { name_zh: "市场平静", name_en: "Calm", action_zh: "市场平静，无需特别操作，按计划持有或定投即可。", action_en: "Market is calm. No special action — hold or stick to your DCA plan.", color: "gray" },
+    1: { name_zh: "正常调整", name_en: "Normal Correction", action_zh: "维持标准定投节奏，不必恐慌，也不必激进抄底。", action_en: "Maintain standard DCA. No need to panic or aggressively buy the dip.", color: "blue" },
+    2: { name_zh: "恐慌", name_en: "Panic", action_zh: "分批建仓：先投 30%，VIX 触 30 再加 30%，VIX 破 40 或回落时投入剩余 40%。", action_en: "Tranche-based buying: deploy 30% now, +30% at VIX 30, final 40% when VIX breaks 40 or rolls over.", color: "yellow" },
+    3: { name_zh: "极度恐慌", name_en: "Extreme Panic", action_zh: "积极布局优质核心资产，始终保留部分现金，切勿一次性全仓。", action_en: "Aggressively target quality assets. Always preserve some cash — never go all-in at once.", color: "green" },
+    4: { name_zh: "系统性风险", name_en: "Systemic Risk", action_zh: "绝对不要急于抄底。降低杠杆，减持高 Beta 股，储备现金，等待信用市场企稳。", action_en: "Do not rush to buy the dip. Reduce leverage, cut high-beta stocks, stockpile cash, wait for credit markets to stabilize.", color: "red" },
+    5: { name_zh: "极度贪婪", name_en: "Extreme Greed", action_zh: "市场估值已拉伸。逐步减仓，轮换至防御性资产，可考虑 Covered Call 锁定收益。", action_en: "Valuations are stretched. Scale back exposure, rotate defensive, write Covered Calls.", color: "purple" },
   }
   return { scenario: num, ...META[num] }
 }
