@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as cache from "../cache.js";
 import type * as crons from "../crons.js";
 import type * as history from "../history.js";
 import type * as http from "../http.js";
@@ -24,6 +25,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  cache: typeof cache;
   crons: typeof crons;
   history: typeof history;
   http: typeof http;

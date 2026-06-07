@@ -38,6 +38,13 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["clerkUserId"]),
 
+  // Single-row shared cache of the full computed signal payload, so page loads
+  // render instantly instead of waiting on external APIs.
+  marketCache: defineTable({
+    data: v.any(),
+    updatedAt: v.number(),
+  }),
+
   marketState: defineTable({
     scenario: v.number(),
     name_zh: v.string(),

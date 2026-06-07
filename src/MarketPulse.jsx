@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAction, useQuery } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { useI18n } from './i18n.jsx'
 import { tr } from './lang.js'
-
-const CACHE_TTL = 5 * 60 * 1000
 
 // ─── Animated number count-up ───────────────────────────────────────────────
 function useAnimatedNumber(target, decimals = 1, duration = 900) {
@@ -702,33 +700,27 @@ function CrossAssetCard({ ca, lang }) {
 export default function MarketPulse() {
   const { lang }      = useI18n()
   const getSignals    = useAction(api.signals.get)
+  const cached        = useQuery(api.cache.latest)
   const history       = useQuery(api.history.recent, { days: 30 })
-  const [data, setData]           = useState(null)
-  const [loading, setLoading]     = useState(true)
-  const [lastUpdate, setLastUpdate] = useState(null)
-  const cacheRef = useRef({ ts: 0, data: null })
+  const [refreshing, setRefreshing] = useState(false)
+  const [failed, setFailed]         = useState(false)
 
-  const load = useCallback(async (force = false) => {
-    const now = Date.now()
-    if (!force && cacheRef.current.data && now - cacheRef.current.ts < CACHE_TTL) {
-      setData(cacheRef.current.data)
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    try {
-      const result = await getSignals({})
-      cacheRef.current = { ts: now, data: result }
-      setData(result)
-      setLastUpdate(new Date())
-    } catch (e) {
-      console.error('Failed to load signals', e)
-    } finally {
-      setLoading(false)
-    }
+  // Render instantly from the shared cache; refresh on mount. The action serves
+  // a ≤60s shared cache and only hits external APIs when stale.
+  useEffect(() => {
+    getSignals().then(() => setFailed(false)).catch(() => setFailed(true))
   }, [getSignals])
 
-  useEffect(() => { load() }, [load])
+  const data       = cached?.data ?? null
+  const lastUpdate = cached?.updatedAt ?? null
+
+  const refresh = () => {
+    setRefreshing(true)
+    getSignals({ force: true })
+      .then(() => setFailed(false))
+      .catch(() => setFailed(true))
+      .finally(() => setRefreshing(false))
+  }
 
   return (
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '1.5rem 1rem' }}>
@@ -742,13 +734,13 @@ export default function MarketPulse() {
           {lastUpdate && (
             <div style={{ fontFamily: 'JetBrains Mono', fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.12em', marginTop: '0.3rem' }}>
               {tr(lang, { zh: '更新于', en: 'UPDATED', ja: '更新', fr: 'MAJ', de: 'STAND', ru: 'ОБНОВЛЕНО' })}{' '}
-              {lastUpdate.toLocaleTimeString(DATE_LOCALE[lang] ?? 'en-US')}
-              <span style={{ color: 'var(--text-muted)', marginLeft: '0.6rem' }}>· 5MIN CACHE</span>
+              {new Date(lastUpdate).toLocaleTimeString(DATE_LOCALE[lang] ?? 'en-US')}
+              {refreshing && <span className="cursor-blink" style={{ color: 'var(--accent)', marginLeft: '0.6rem' }}>· SYNC</span>}
             </div>
           )}
         </div>
         <button
-          onClick={() => load(true)}
+          onClick={refresh}
           style={{
             fontFamily: 'JetBrains Mono',
             fontSize: '8px',
@@ -769,14 +761,16 @@ export default function MarketPulse() {
         </button>
       </div>
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '5rem 0', fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--text-dim)', letterSpacing: '0.2em' }}>
-          LOADING<span className="cursor-blink" style={{ color: 'var(--accent)' }}>_</span>
-        </div>
-      ) : !data ? (
-        <div style={{ textAlign: 'center', padding: '5rem 0', fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--red)', letterSpacing: '0.2em' }}>
-          ERR: FAILED TO LOAD
-        </div>
+      {!data ? (
+        failed ? (
+          <div style={{ textAlign: 'center', padding: '5rem 0', fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--red)', letterSpacing: '0.2em' }}>
+            ERR: FAILED TO LOAD
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '5rem 0', fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--text-dim)', letterSpacing: '0.2em' }}>
+            LOADING<span className="cursor-blink" style={{ color: 'var(--accent)' }}>_</span>
+          </div>
+        )
       ) : (
         <>
           <ScenarioTrack activeNum={data.scenario?.scenario} lang={lang} />

@@ -124,10 +124,16 @@ async function computeSignals() {
 }
 
 export const get = action({
-  args: {},
+  args: { force: v.optional(v.boolean()) },
   returns: v.any(),
-  handler: async (ctx) => {
+  handler: async (ctx, { force }) => {
+    // Shared cache: serve a snapshot up to 60s old without hitting external APIs.
+    if (!force) {
+      const cached = await ctx.runQuery(api.cache.latest, {})
+      if (cached && Date.now() - cached.updatedAt < 60_000) return cached.data
+    }
     const data = await computeSignals()
+    await ctx.runMutation(internal.cache.set, { data })
     try {
       await ctx.runMutation(api.visits.saveMarketState, {
         scenario: data.scenario.scenario,
@@ -151,6 +157,8 @@ export const snapshot = internalAction({
     if (!isUsTradingHour(new Date())) return
     const data = await computeSignals()
     if (!data.vix.value) return // fetch failed — don't store a zeroed row
+
+    await ctx.runMutation(internal.cache.set, { data })
 
     const prev = await ctx.runQuery(internal.history.latest, {})
 
