@@ -4,6 +4,8 @@ import { api, internal } from "./_generated/api"
 
 const ETF = ["SPY", "RSP", "IWM", "HYG", "JNK", "TLT", "GLD", "UUP"]
 
+const CACHE_TTL_MS = 60_000 // serve the shared signal cache for up to this long
+
 type Meta = { name_zh: string; name_en: string; action_zh: string; action_en: string; color: string }
 
 function classifyScenario(vix: number, fg: number, hygChg: number, jnkChg: number) {
@@ -130,10 +132,10 @@ export const get = action({
     // Shared cache: serve a snapshot up to 60s old without hitting external APIs.
     if (!force) {
       const cached = await ctx.runQuery(api.cache.latest, {})
-      if (cached && Date.now() - cached.updatedAt < 60_000) return cached.data
+      if (cached && Date.now() - cached.updatedAt < CACHE_TTL_MS) return cached.data
     }
     const data = await computeSignals()
-    await ctx.runMutation(internal.cache.set, { data })
+    if (data.vix.value) await ctx.runMutation(internal.cache.set, { data })
     try {
       await ctx.runMutation(api.visits.saveMarketState, {
         scenario: data.scenario.scenario,

@@ -4,6 +4,8 @@ import { api } from '../convex/_generated/api'
 import { useI18n } from './i18n.jsx'
 import { tr } from './lang.js'
 
+const REFRESH_TTL_MS = 60 * 1000 // skip the background refresh while cache is newer than this
+
 // ─── Animated number count-up ───────────────────────────────────────────────
 function useAnimatedNumber(target, decimals = 1, duration = 900) {
   const [display, setDisplay] = useState(null)
@@ -705,11 +707,13 @@ export default function MarketPulse() {
   const [refreshing, setRefreshing] = useState(false)
   const [failed, setFailed]         = useState(false)
 
-  // Render instantly from the shared cache; refresh on mount. The action serves
-  // a ≤60s shared cache and only hits external APIs when stale.
+  // Render instantly from the shared cache; only fetch when the cache is stale —
+  // a fresh cache needs no action round-trip, the query already has the data.
   useEffect(() => {
-    getSignals().then(() => setFailed(false)).catch(() => setFailed(true))
-  }, [getSignals])
+    if (cached === undefined) return
+    const stale = !cached || Date.now() - cached.updatedAt >= REFRESH_TTL_MS
+    if (stale) getSignals().catch(() => setFailed(true))
+  }, [cached, getSignals])
 
   const data       = cached?.data ?? null
   const lastUpdate = cached?.updatedAt ?? null
