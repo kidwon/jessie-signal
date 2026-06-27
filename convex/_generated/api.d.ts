@@ -13,6 +13,7 @@ import type * as crons from "../crons.js";
 import type * as history from "../history.js";
 import type * as http from "../http.js";
 import type * as notify from "../notify.js";
+import type * as settings from "../settings.js";
 import type * as signals from "../signals.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as users from "../users.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   history: typeof history;
   http: typeof http;
   notify: typeof notify;
+  settings: typeof settings;
   signals: typeof signals;
   subscriptions: typeof subscriptions;
   users: typeof users;

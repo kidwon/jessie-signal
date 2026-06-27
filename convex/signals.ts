@@ -180,12 +180,13 @@ export const snapshot = internalAction({
       credit_stress: data.credit.stress,
     })
 
-    // Alert subscribers when the scenario changes into/out of a notable state
-    // (panic/extreme panic/systemic/extreme greed) — skip calm↔correction flicker.
+    // Admin config: which target states are allowed to fire an alert email.
+    const settings = await ctx.runQuery(internal.settings.read, {})
+
+    // Alert on a scenario change when the new scenario is enabled in settings.
     const to = data.scenario.scenario
     const from = prev?.scenario
-    const notable = (n: number) => n >= 2
-    if (from != null && to !== from && (notable(to) || notable(from))) {
+    if (from != null && to !== from && settings.scenarios.includes(to)) {
       await ctx.scheduler.runAfter(0, internal.notify.notifyScenarioChange, {
         name_zh: data.scenario.name_zh,
         name_en: data.scenario.name_en,
@@ -194,6 +195,20 @@ export const snapshot = internalAction({
         vix: data.vix.value,
         fg: data.fear_greed.score,
       })
+    }
+
+    // Alert on a Fear & Greed level change when the new level is enabled.
+    if (prev != null) {
+      const fgFrom = fgLabel(prev.fg_score).label_en
+      const fgTo = data.fear_greed.label_en
+      if (fgTo !== fgFrom && settings.fearGreed.includes(fgTo)) {
+        await ctx.scheduler.runAfter(0, internal.notify.notifyFearGreedChange, {
+          label_zh: data.fear_greed.label_zh,
+          label_en: data.fear_greed.label_en,
+          score: data.fear_greed.score,
+          vix: data.vix.value,
+        })
+      }
     }
   },
 })

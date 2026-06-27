@@ -95,7 +95,7 @@ export const stats = query({
 // Whether the signed-in user's email is in the ADMIN_EMAILS allowlist
 // (comma-separated Convex env var). Requires the Clerk "convex" JWT template to
 // include the email claim. Returns false when not signed in / no email.
-async function isAdminIdentity(ctx: { auth: { getUserIdentity: () => Promise<{ email?: string } | null> } }) {
+export async function isAdminIdentity(ctx: { auth: { getUserIdentity: () => Promise<{ email?: string } | null> } }) {
   const identity = await ctx.auth.getUserIdentity();
   const email = identity?.email?.toLowerCase();
   if (!email) return false;

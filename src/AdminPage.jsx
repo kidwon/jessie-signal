@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useQuery, useAction } from 'convex/react'
+import { useQuery, useAction, useMutation } from 'convex/react'
 import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react'
 import { api } from '../convex/_generated/api'
 import { clerkEnabled } from './clerk'
@@ -70,6 +70,101 @@ function DataTable({ headers, children }) {
   )
 }
 
+// Target states an alert email can fire on. Scenario ids match convex META;
+// fearGreed ids match label_en from convex/signals fgLabel().
+const SCENARIOS = [
+  { id: 0, zh: '平静', en: 'Calm' },
+  { id: 1, zh: '正常调整', en: 'Normal Correction' },
+  { id: 2, zh: '恐慌', en: 'Panic' },
+  { id: 3, zh: '极度恐慌', en: 'Extreme Panic' },
+  { id: 4, zh: '系统性风险', en: 'Systemic Risk' },
+  { id: 5, zh: '极度贪婪', en: 'Extreme Greed' },
+]
+const FEAR_GREED = [
+  { id: 'Extreme Fear', zh: '极度恐惧', en: 'Extreme Fear' },
+  { id: 'Fear', zh: '恐惧', en: 'Fear' },
+  { id: 'Neutral', zh: '中性', en: 'Neutral' },
+  { id: 'Greed', zh: '贪婪', en: 'Greed' },
+  { id: 'Extreme Greed', zh: '极度贪婪', en: 'Extreme Greed' },
+]
+
+function ToggleRow({ on, label, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%',
+        padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)',
+        background: 'none', cursor: 'pointer', textAlign: 'left',
+        fontFamily: mono, fontSize: '11px', letterSpacing: '0.05em',
+        color: on ? 'var(--text)' : 'var(--text-dim)',
+      }}
+    >
+      <span style={{ color: on ? 'var(--accent)' : 'var(--text-dim)' }}>[{on ? '✓' : ' '}]</span>
+      {label}
+    </button>
+  )
+}
+
+function AlertSettings({ lang }) {
+  const settings = useQuery(api.settings.get)
+  const update = useMutation(api.settings.update)
+  const [scenarios, setScenarios] = useState(null)
+  const [fearGreed, setFearGreed] = useState(null)
+
+  useEffect(() => {
+    if (settings) { setScenarios(settings.scenarios); setFearGreed(settings.fearGreed) }
+  }, [settings])
+
+  if (settings === undefined || scenarios === null || fearGreed === null) {
+    return <Notice>LOADING<span className="cursor-blink" style={{ color: 'var(--accent)' }}>_</span></Notice>
+  }
+
+  const toggleScenario = (id) => {
+    const next = scenarios.includes(id) ? scenarios.filter((x) => x !== id) : [...scenarios, id]
+    setScenarios(next)
+    update({ scenarios: next, fearGreed })
+  }
+  const toggleFg = (id) => {
+    const next = fearGreed.includes(id) ? fearGreed.filter((x) => x !== id) : [...fearGreed, id]
+    setFearGreed(next)
+    update({ scenarios, fearGreed: next })
+  }
+
+  return (
+    <>
+      <div style={{ fontFamily: mono, fontSize: '8px', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 0.8rem', lineHeight: 1.6 }}>
+        {tr(lang, {
+          zh: '勾选「进入该状态时」发送邮件提醒。',
+          en: 'Checked states fire an alert email when the market enters them.',
+          ja: 'チェックした状態に「入った時」にメール通知を送信。',
+          fr: "Les états cochés déclenchent un e-mail à l'entrée.",
+          de: 'Markierte Zustände lösen beim Eintritt eine E-Mail aus.',
+          ru: 'Отмеченные состояния отправляют письмо при входе.',
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: '240px', border: '1px solid var(--border)' }}>
+          <div style={{ ...headCell, borderBottom: '1px solid var(--border)' }}>
+            {tr(lang, { zh: '市场情景', en: 'SCENARIO', ja: '市場シナリオ', fr: 'SCÉNARIO', de: 'SZENARIO', ru: 'СЦЕНАРИЙ' })}
+          </div>
+          {SCENARIOS.map((s) => (
+            <ToggleRow key={s.id} on={scenarios.includes(s.id)} label={tr(lang, s)} onClick={() => toggleScenario(s.id)} />
+          ))}
+        </div>
+        <div style={{ flex: 1, minWidth: '240px', border: '1px solid var(--border)' }}>
+          <div style={{ ...headCell, borderBottom: '1px solid var(--border)' }}>
+            {tr(lang, { zh: '恐贪指数', en: 'FEAR & GREED', ja: '恐怖と強欲', fr: 'PEUR & AVIDITÉ', de: 'ANGST & GIER', ru: 'СТРАХ И ЖАДНОСТЬ' })}
+          </div>
+          {FEAR_GREED.map((f) => (
+            <ToggleRow key={f.id} on={fearGreed.includes(f.id)} label={tr(lang, f)} onClick={() => toggleFg(f.id)} />
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 function AdminData({ lang }) {
   const stats = useQuery(api.visits.stats)
   const visits = useQuery(api.visits.listRecentVisits)
@@ -92,6 +187,19 @@ function AdminData({ lang }) {
           value={stats?.today}
         />
       </div>
+
+      {/* Alert settings */}
+      <SectionLabel>
+        {tr(lang, {
+          zh: '// 邮件提醒设置',
+          en: '// ALERT SETTINGS',
+          ja: '// メール通知設定',
+          fr: '// PARAMÈTRES D’ALERTE',
+          de: '// ALARM-EINSTELLUNGEN',
+          ru: '// НАСТРОЙКИ ОПОВЕЩЕНИЙ',
+        })}
+      </SectionLabel>
+      <AlertSettings lang={lang} />
 
       {/* Signed-in users (live from Clerk) */}
       <SectionLabel>

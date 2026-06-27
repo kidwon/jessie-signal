@@ -38,6 +38,15 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["clerkUserId"]),
 
+  // Single-row admin config: which target states trigger an alert email.
+  // `scenarios` holds enabled scenario numbers (0–5); `fearGreed` holds enabled
+  // F&G level labels (label_en). Absent row → all states enabled (see settings.ts).
+  alertSettings: defineTable({
+    scenarios: v.array(v.number()),
+    fearGreed: v.array(v.string()),
+    updatedAt: v.number(),
+  }),
+
   // Single-row shared cache of the full computed signal payload, so page loads
   // render instantly instead of waiting on external APIs.
   marketCache: defineTable({
